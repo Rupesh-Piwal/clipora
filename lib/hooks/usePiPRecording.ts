@@ -42,6 +42,7 @@ export const usePiPRecording = () => {
     // Source Refs
     const screenStreamRef = useRef<MediaStream | null>(null);
     const webcamStreamRef = useRef<MediaStream | null>(null);
+    const microphoneStreamRef = useRef<MediaStream | null>(null);
     const screenVideoRef = useRef<HTMLVideoElement | null>(null);
     const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -73,7 +74,7 @@ export const usePiPRecording = () => {
         ctx.drawImage(screenVideo, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
         // Draw Webcam (PiP)
-        if (webcamVideo && webcamVideo.readyState === 4) {
+        if (webcamVideo && webcamVideo.readyState === 4 && webcamVideo.srcObject) {
             const { x, y, width, height } = webcamConfigRef.current;
 
             // Enforce square aspect ratio for circular cut
@@ -161,7 +162,7 @@ export const usePiPRecording = () => {
         }
 
         // Stop Tracks
-        [screenStreamRef.current, webcamStreamRef.current].forEach((stream) => {
+        [screenStreamRef.current, webcamStreamRef.current, microphoneStreamRef.current].forEach((stream) => {
             stream?.getTracks().forEach((track) => track.stop());
         });
 
@@ -210,6 +211,7 @@ export const usePiPRecording = () => {
                         audio: true, // Mic audio
                     });
                     webcamStreamRef.current = userStream;
+                    microphoneStreamRef.current = userStream;
                 } catch (err) {
                     console.warn("Could not get webcam/mic:", err);
                 }
@@ -311,6 +313,50 @@ export const usePiPRecording = () => {
         }
     };
 
+    const toggleWebcam = useCallback(async (shouldEnable: boolean) => {
+        try {
+            if (shouldEnable) {
+                // Enable Webcam
+                // 1. Check if we already have a stream
+                if (webcamVideoRef.current && webcamVideoRef.current.srcObject) {
+                    return; // Already enabled
+                }
+
+                // 2. Get User Media (Video only)
+                // We ask for audio: false because this is just for the visual overlay, audio is mixed separately
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 1280, height: 720 },
+                    audio: false
+                });
+
+                webcamStreamRef.current = stream;
+
+                // 3. Setup Video Element
+                let wVideo = webcamVideoRef.current;
+                if (!wVideo) {
+                    wVideo = document.createElement("video");
+                    wVideo.muted = true;
+                    wVideo.playsInline = true;
+                    webcamVideoRef.current = wVideo;
+                }
+                wVideo.srcObject = stream;
+                await wVideo.play();
+
+            } else {
+                // Disable Webcam
+                if (webcamStreamRef.current) {
+                    webcamStreamRef.current.getVideoTracks().forEach(t => t.stop());
+                    webcamStreamRef.current = null;
+                }
+                if (webcamVideoRef.current) {
+                    webcamVideoRef.current.srcObject = null;
+                }
+            }
+        } catch (error) {
+            console.error("Failed to toggle webcam:", error);
+        }
+    }, []);
+
     const stopRecording = useCallback(() => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
             mediaRecorderRef.current.stop();
@@ -351,6 +397,7 @@ export const usePiPRecording = () => {
         stopRecording,
         resetRecording,
         setWebcamConfig,
-        canvasDimensions: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }
+        canvasDimensions: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+        toggleWebcam
     };
 };

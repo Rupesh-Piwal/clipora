@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Circle, Pause, Square, Video, Settings, Clock } from "lucide-react";
-import SettingsPanel from "./settings-panel";
 import { usePiPRecording } from "@/lib/hooks/usePiPRecording";
 
 type RecordingState = "idle" | "recording" | "paused";
@@ -30,7 +29,8 @@ export default function RecordingInterface() {
     stopRecording,
     previewStream,
     setWebcamConfig,
-    canvasDimensions
+    canvasDimensions,
+    toggleWebcam
   } = usePiPRecording();
 
   // Calculate dynamic UI size for webcam based on container
@@ -132,6 +132,7 @@ export default function RecordingInterface() {
      Sync UI state → Recording engine
   --------------------------------------------- */
   useEffect(() => {
+    // 1. Handle Start/Stop
     if (recordingState === "recording" && !isRecording) {
       startRecording(webcamEnabled);
     }
@@ -139,7 +140,14 @@ export default function RecordingInterface() {
     if (recordingState === "idle" && isRecording) {
       stopRecording();
     }
-  }, [recordingState, isRecording, webcamEnabled]);
+  }, [recordingState, isRecording]); // Removed webcamEnabled from dependency to avoid restart
+
+  // 2. Handle Runtime Webcam Toggle
+  useEffect(() => {
+    if (isRecording) {
+      toggleWebcam(webcamEnabled);
+    }
+  }, [webcamEnabled, isRecording, toggleWebcam]);
 
   useEffect(() => {
     if (!previewVideoRef.current) return;
@@ -329,9 +337,6 @@ export default function RecordingInterface() {
             </div>
           </div>
         </div>
-
-        {/* Settings Panel */}
-        <div className="lg:col-span-1">{showSettings && <SettingsPanel />}</div>
       </div>
     </main>
   );
