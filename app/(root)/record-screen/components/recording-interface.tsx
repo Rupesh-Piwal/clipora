@@ -7,9 +7,11 @@ import { usePiPRecording } from "@/lib/hooks/usePiPRecording";
 import { Progress } from "@/components/ui/progress";
 
 // FSM State Definition
+// Idle -> Recording <-> Paused -> Stopping -> Completed -> Uploading -> Share Ready
 type RecordingState = "idle" | "recording" | "paused" | "stopping" | "completed" | "uploading" | "share-ready";
 
 export default function RecordingInterface() {
+  // Main finite state machine for the UI
   const [recordingState, setRecordingState] = useState<RecordingState>("idle");
   const [webcamEnabled, setWebcamEnabled] = useState(true);
 
@@ -46,7 +48,15 @@ export default function RecordingInterface() {
   const [overlaySize, setOverlaySize] = useState(160);
 
   // --- Dynamic UI Sizing ---
+  // --- Dynamic UI Sizing ---
+  /**
+   * Calculates the size of the webcam overlay relative to the container width.
+   * Maintains a consistent visual ratio across different screen sizes.
+   */
   const updateOverlaySize = useCallback(() => {
+    //The useCallback hook is used here for Referential Stability and Performance.
+    //Preventing Infinite loops / Re-binding:
+    //Without useCallback, the updateOverlaySize function would be redefined completely on every single component render, leading to potential infinite loops or unnecessary re-renders.
     if (containerRef.current) {
       const { width } = containerRef.current.getBoundingClientRect();
       const calculatedSize = (width / 1920) * 320;
@@ -82,6 +92,11 @@ export default function RecordingInterface() {
   }, [updateOverlaySize]);
 
   // --- Drag Logic ---
+  /**
+   * Handles dragging of the PiP webcam overlay within the preview container.
+   * Updates local UI state immediately for smoothness, then syncs with the
+   * canvas compositor via setWebcamConfig.
+   */
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!webcamEnabled) return;
     setIsDragging(true);
@@ -132,6 +147,10 @@ export default function RecordingInterface() {
   // --- FSM Transitions & Logic ---
 
   // 1. DIRECT Start Recording (Fixes Infinite Loop)
+  /**
+   * Triggers the start of the recording session.
+   * Updates state to 'recording' only after successful stream initialization.
+   */
   const handleStartRecording = async () => {
     try {
       await startRecording(webcamEnabled);

@@ -20,6 +20,14 @@ export interface WebcamConfig {
     height: number;
 }
 
+/**
+ * Custom hook to manage Picture-in-Picture (PiP) screen recording.
+ * Handles:
+ * 1. Stream capture (Screen + Mic + Webcam)
+ * 2. Canvas compositing (Drawing webcam overlay on screen capture)
+ * 3. Audio mixing (System audio + Mic)
+ * 4. MediaRecorder lifecycle management
+ */
 export const usePiPRecording = () => {
     const [state, setState] = useState<BunnyRecordingState>({
         isRecording: false,
@@ -36,6 +44,7 @@ export const usePiPRecording = () => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
     const animationFrameRef = useRef<number | null>(null);
+    const backgroundIntervalRef = useRef<NodeJS.Timeout | null>(null); // Fallback for background tabs
     const startTimeRef = useRef<number | null>(null);
     const chunksRef = useRef<Blob[]>([]);
 
@@ -59,6 +68,11 @@ export const usePiPRecording = () => {
     }, []);
 
     // --- 1. Helper: Draw Loop (The Compositor) ---
+    /**
+     * The core rendering loop running at 60fps.
+     * Composites the screen capture and webcam video onto a canvas.
+     * Handles the circular clipping and positioning of the webcam overlay.
+     */
     const drawFrame = useCallback(() => {
         const ctx = ctxRef.current;
         const canvas = canvasRef.current;
@@ -69,6 +83,8 @@ export const usePiPRecording = () => {
 
         // Clear canvas
         ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        // const CANVAS_WIDTH = 1920;
+        // const CANVAS_HEIGHT = 1080;
 
         // Draw Screen (Background) - Stretch to fit 1920x1080
         ctx.drawImage(screenVideo, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -145,15 +161,26 @@ export const usePiPRecording = () => {
             ctx.restore();
         }
 
+        // Always schedule next frame via rAF for smooth foreground rendering
+        // The safety interval handles background tab scenario
         animationFrameRef.current = requestAnimationFrame(drawFrame);
     }, []);
 
     // --- 2. Helper: Cleanup ---
+    /**
+     * Proper cleanup of all media resources.
+     * Stops streams, tracks, animation loops, and audio context to prevent memory leaks and hardware locks.
+     */
     const cleanup = useCallback(() => {
-        // Stop Animation
+        // Stop Animation (rAF)
         if (animationFrameRef.current) {
             cancelAnimationFrame(animationFrameRef.current);
             animationFrameRef.current = null;
+        }
+        // Stop Animation (Background Interval)
+        if (backgroundIntervalRef.current) {
+            clearInterval(backgroundIntervalRef.current);
+            backgroundIntervalRef.current = null;
         }
 
         // Stop MediaRecorder
@@ -184,6 +211,15 @@ export const usePiPRecording = () => {
     }, []);
 
     // --- 3. Start Recording ---
+    /**
+     * Initializes the recording session.
+     * 1. Requests Display Media (Screen)
+     * 2. Requests User Media (Webcam/Mic)
+     * 3. Sets up hidden video elements for decoding streams
+     * 4. Initializes Canvas for compositing
+     * 5. Sets up AudioContext for mixing
+     * 6. Starts MediaRecorder on the final mixed stream
+     */
     const startRecording = async (withWebcam: boolean = true) => {
         try {
             // Cleanup previous session if any
@@ -197,6 +233,7 @@ export const usePiPRecording = () => {
                     width: { ideal: CANVAS_WIDTH },
                     height: { ideal: CANVAS_HEIGHT },
                     frameRate: { ideal: FRAME_RATE },
+
                 },
                 audio: true, // System audio
             });
@@ -251,8 +288,16 @@ export const usePiPRecording = () => {
             // Removed alpha: false to avoid potential optimization bugs with clipping/transparency interactions
             ctxRef.current = canvas.getContext("2d");
 
-            // Start loop
+            // Start loop (primary rAF + safety interval for background)
             drawFrame();
+            // Safety interval: runs in parallel, ensures frames are drawn even if rAF pauses
+            // Browsers throttle background intervals to ~1/sec, but that's better than complete freeze
+            backgroundIntervalRef.current = setInterval(() => {
+                // Only draw if rAF might be stalled (in background)
+                if (document.hidden) {
+                    drawFrame();
+                }
+            }, 100); // Check frequently, but only draws when hidden
 
             // D. Audio Mixing
             const hasDisplayAudio = displayStream.getAudioTracks().length > 0;
@@ -313,6 +358,10 @@ export const usePiPRecording = () => {
         }
     };
 
+    /**
+     * Dynamically enables or disables the webcam during an active recording.
+     * seamlessly adds/removes the video track without stopping the main recording.
+     */
     const toggleWebcam = useCallback(async (shouldEnable: boolean) => {
         try {
             if (shouldEnable) {
