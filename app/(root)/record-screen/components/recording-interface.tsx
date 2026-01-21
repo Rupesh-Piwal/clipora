@@ -6,12 +6,24 @@ import {
   Pause,
   Square,
   Video,
+  VideoOff,
   RefreshCw,
   Trash2,
   Upload,
   Copy,
   ExternalLink,
   AlertTriangle,
+  Mic,
+  MicOff,
+  MonitorUp,
+  MoreVertical,
+  PhoneOff,
+  Smile,
+  Hand,
+  LayoutDashboard,
+  ScrollText,
+  Share,
+  Disc,
 } from "lucide-react";
 import { usePiPRecording } from "@/lib/hooks/usePiPRecording";
 import { Progress } from "@/components/ui/progress";
@@ -235,7 +247,7 @@ export default function RecordingInterface() {
         recordingState === "paused")
     ) {
       previewVideoRef.current.srcObject = previewStream;
-      previewVideoRef.current.play().catch(() => {});
+      previewVideoRef.current.play().catch(() => { });
     } else {
       previewVideoRef.current.srcObject = null;
     }
@@ -306,25 +318,18 @@ export default function RecordingInterface() {
 
   // 2. MAIN WRAPPER
   return (
-    <main className="flex-1 w-full min-h-screen bg-background">
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-6 max-w-7xl mx-auto h-full">
-        {/* Main Area */}
-        <div className="lg:col-span-3 flex flex-col gap-6">
-          {/* RECORDING / IDLE VIEW */}
-          {(recordingState === "idle" ||
-            recordingState === "recording" ||
-            recordingState === "paused") && (
-            <div className="space-y-4 animate-in fade-in duration-300">
-              {/* Preview Canvas */}
+    <main className="flex-1 w-full min-h-screen bg-background p-6">
+      {/* RECORDING / IDLE VIEW */}
+      {/* RECORDING / IDLE VIEW */}
+      {(recordingState === "idle" ||
+        recordingState === "recording" ||
+        recordingState === "paused") && (
+          <div className="flex flex-col h-[calc(100vh-4rem)] bg-[#202124] text-white rounded-lg overflow-hidden">
+            {/* 1. VIDEO AREA */}
+            <div className="flex-1 flex items-center justify-center p-4 min-h-0 relative">
               <div
                 ref={containerRef}
-                className={`relative w-full rounded-xl overflow-hidden aspect-video border-2 transition-all duration-300 ${
-                  recordingState === "recording"
-                    ? "border-red-500 shadow-2xl shadow-red-500/20"
-                    : recordingState === "paused"
-                      ? "border-amber-500 shadow-xl shadow-amber-500/20"
-                      : "border-border/50 bg-black/50"
-                }`}
+                className="relative w-full max-w-5xl aspect-video bg-[#3c4043] rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/5 group"
               >
                 {/* LIVE PREVIEW */}
                 <video
@@ -332,41 +337,41 @@ export default function RecordingInterface() {
                   muted
                   playsInline
                   autoPlay
-                  className={`absolute inset-0 w-full h-full object-contain bg-black transition-opacity duration-300 ${previewStream ? "opacity-100" : "opacity-0"}`}
+                  className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-300 ${previewStream ? "opacity-100" : "opacity-0"}`}
                 />
 
-                {/* Status Overlay */}
-                <div className="absolute top-6 left-6 z-10 pointer-events-none flex items-center gap-3">
+                {/* STATUS INDICATORS (Top Left) */}
+                <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
                   {recordingState === "recording" && (
-                    <div className="flex items-center gap-2 bg-red-500/90 text-white px-3 py-1.5 rounded-full backdrop-blur-md shadow-lg animate-in slide-in-from-top-2">
-                      <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse shadow-sm" />
-                      <span className="text-sm font-bold tracking-wide">
-                        Recording
+                    <div className="flex items-center gap-2 bg-red-600/90 text-white px-3 py-1.5 rounded-md backdrop-blur-md shadow-lg animate-in slide-in-from-top-2">
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                      <span className="text-xs font-bold tracking-wider uppercase">
+                        REC
                       </span>
                     </div>
                   )}
                   {recordingState === "paused" && (
-                    <div className="flex items-center gap-2 bg-amber-500/90 text-white px-3 py-1.5 rounded-full backdrop-blur-md shadow-lg">
-                      <Pause className="w-3.5 h-3.5 fill-current" />
-                      <span className="text-sm font-bold tracking-wide">
+                    <div className="flex items-center gap-2 bg-amber-500/90 text-white px-3 py-1.5 rounded-md backdrop-blur-md shadow-lg">
+                      <Pause className="w-3 h-3 fill-current" />
+                      <span className="text-xs font-bold tracking-wider uppercase">
                         Paused
                       </span>
                     </div>
                   )}
                 </div>
 
-                {/* Timer */}
+                {/* TIMER (Top Right) */}
                 {recordingState !== "idle" && (
-                  <div className="absolute top-6 right-6 z-10 bg-black/60 text-white px-4 py-1.5 rounded-full font-mono text-lg font-medium backdrop-blur-md border border-white/10 shadow-lg">
+                  <div className="absolute top-4 right-4 z-10 bg-black/40 text-white px-3 py-1.5 rounded-md font-mono text-sm font-medium backdrop-blur-md">
                     {formatTime(recordingDuration)}
                   </div>
                 )}
 
-                {/* Webcam Overlay */}
+                {/* WEBCAM OVERLAY */}
                 {webcamEnabled && previewStream && isInitialized && (
                   <div
                     onMouseDown={handleMouseDown}
-                    className="absolute z-20 cursor-move group hover:scale-105 transition-transform duration-200"
+                    className="absolute z-20 cursor-move rounded-lg overflow-hidden shadow-lg ring-1 ring-white/20 hover:ring-white/40 transition-all duration-200"
                     style={{
                       left: webcamPos.x,
                       top: webcamPos.y,
@@ -374,75 +379,120 @@ export default function RecordingInterface() {
                       height: `${overlaySize}px`,
                     }}
                   >
-                    {/* Visual only - the actual video is in the canvas */}
-                    {/* <div className="w-full h-full rounded-full border-4 border-white/20 shadow-2xl bg-black/10 backdrop-blur-sm group-hover:border-white/40 transition-colors" /> */}
+                    {/* The actual webcam internal rendering is handled by the canvas compositor, 
+                        but we can add a visual border or effect here if needed. */}
+                    <div className="w-full h-full bg-transparent" />
                   </div>
                 )}
 
                 {/* IDLE PLACEHOLDER */}
                 {!previewStream && recordingState === "idle" && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-linear-to-br from-gray-900 to-black text-center p-8">
-                    <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center ring-1 ring-white/10 shadow-2xl">
-                      <Video className="w-10 h-10 text-muted-foreground" />
-                    </div>
-                    <div className="space-y-2">
-                      <h3 className="text-2xl font-bold bg-clip-text text-transparent bg-linear-to-b from-white to-white/60">
-                        Ready to Record
-                      </h3>
-                      <p className="text-muted-foreground max-w-sm">
-                        Capture your screen and camera with professional
-                        quality.
-                      </p>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center p-8">
+                    <div className="w-24 h-24 rounded-full bg-[#303134] flex items-center justify-center mb-4">
+                      <Video className="w-8 h-8 text-gray-400" />
                     </div>
                   </div>
                 )}
               </div>
-
-              {/* CONTROLS */}
-              <div className="flex items-center justify-center gap-6 bg-card/60 backdrop-blur-lg border rounded-2xl p-6 shadow-sm">
-                <Button
-                  onClick={handleStartRecording}
-                  disabled={recordingState !== "idle"}
-                  className={`rounded-full w-16 h-16 p-0 shadow-xl transition-all hover:scale-105 active:scale-95 ${recordingState === "idle" ? "bg-red-500 hover:bg-red-600" : "opacity-50 grayscale"}`}
-                >
-                  <div
-                    className={`rounded-full border-2 border-white/20 ${recordingState === "idle" ? "w-6 h-6 bg-white" : "w-6 h-6 border-white"}`}
-                  />
-                </Button>
-
-                <Button
-                  onClick={handleStopRecording}
-                  disabled={recordingState === "idle"}
-                  variant="destructive"
-                  className="rounded-full w-16 h-16 p-0 shadow-xl hover:scale-105 active:scale-95 transition-all"
-                >
-                  <Square className="w-6 h-6 fill-current" />
-                </Button>
-
-                <div className="w-px h-10 bg-border/50 mx-2" />
-
-                <Button
-                  onClick={() => setWebcamEnabled((p) => !p)}
-                  variant={webcamEnabled ? "default" : "secondary"}
-                  className="rounded-full w-12 h-12 p-0 shadow-md transition-all"
-                  disabled={
-                    recordingState !== "idle" && recordingState !== "recording"
-                  } // Allow toggle during recording
-                >
-                  <Video
-                    className={`w-5 h-5 ${webcamEnabled ? "text-white" : "text-muted-foreground"}`}
-                  />
-                </Button>
-              </div>
             </div>
-          )}
 
-          {/* REVIEW VIEW (Completed) */}
-          {(recordingState === "completed" ||
-            recordingState === "uploading" ||
-            recordingState === "share-ready") && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center justify-between">
+            {/* 2. CONTROL BAR (Bottom) */}
+            <div className="h-20 shrink-0 flex items-center justify-center gap-3 pb-4 px-4">
+              {/* Start/Stop Button (Primary) */}
+              {recordingState === "idle" ? (
+                <div className="flex flex-col items-center gap-2 group">
+                  <button
+                    onClick={handleStartRecording}
+                    className="relative w-14 h-14 rounded-full bg-gradient-to-br from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white shadow-xl hover:shadow-2xl hover:shadow-red-500/30 transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-500/40"
+                    aria-label="Start recording"
+                  >
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-5 h-5 rounded-full bg-white" />
+                    </div>
+                  </button>
+                  <div className="text-center">
+                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Record</p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      Click to start
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 group">
+                  <button
+                    onClick={handleStopRecording}
+                    className="relative w-14 h-14 rounded-full bg-gradient-to-br from-gray-800 to-gray-900 hover:from-gray-900 hover:to-black text-white shadow-xl hover:shadow-2xl transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-gray-500/40"
+                    aria-label="Stop recording"
+                  >
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-4 h-4 bg-red-500 rounded-sm" />
+                    </div>
+                    {/* Pulsing animation */}
+                    <div className="absolute inset-0 rounded-full border-2 border-red-500/40 animate-ping" />
+                  </button>
+                  <div className="text-center">
+                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <span className="inline-flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                        Recording
+                      </span>
+                    </p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      Click to stop
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="w-px h-8 bg-[#5f6368] mx-2 opacity-50" />
+
+              {/* Mic (Visual Toggle) */}
+              <ControlBtn
+                icon={Mic}
+                label="Mic"
+                active={true} // Always "on" visually for now
+                onClick={() => { }}
+              />
+
+              {/* Camera Toggle */}
+              <ControlBtn
+                icon={webcamEnabled ? Video : VideoOff}
+                label="Camera"
+                active={webcamEnabled}
+                onClick={() => setWebcamEnabled(!webcamEnabled)}
+                offState={!webcamEnabled}
+              />
+
+              {/* Placeholder Controls */}
+              <ControlBtn icon={Smile} label="React" />
+              <ControlBtn icon={MonitorUp} label="Present" />
+              <ControlBtn icon={Hand} label="Raise hand" />
+              <ControlBtn icon={MoreVertical} label="More" />
+
+              <div className="w-px h-8 bg-[#5f6368] mx-2 opacity-50" />
+
+              {/* End Call Button */}
+              <ControlBtn
+                icon={PhoneOff}
+                label="Leave"
+                variant="danger"
+                onClick={() => {
+                  if (recordingState === "recording") handleStopRecording();
+                  else setRecordingState("idle"); // Just reset
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+      {/* REVIEW VIEW (Completed) */}
+      {(recordingState === "completed" ||
+        recordingState === "uploading" ||
+        recordingState === "share-ready") && (
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_450px] gap-6 h-[calc(100vh-3rem)] animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* LEFT COLUMN: Video */}
+            <div className="flex flex-col gap-4 overflow-hidden">
+              <div className="flex items-center justify-between shrink-0">
                 <h2 className="text-2xl font-bold tracking-tight">
                   Review Recording
                 </h2>
@@ -454,7 +504,7 @@ export default function RecordingInterface() {
                 </div>
               </div>
 
-              <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-border/50">
+              <div className="relative w-full flex-1 bg-black rounded-xl overflow-hidden shadow-2xl border border-border/50">
                 {recordedVideoUrl && (
                   <video
                     src={recordedVideoUrl}
@@ -463,9 +513,11 @@ export default function RecordingInterface() {
                   />
                 )}
               </div>
+            </div>
 
-              {/* Action Card */}
-              <div className="bg-card border rounded-xl p-6 shadow-lg space-y-6">
+            {/* RIGHT COLUMN: Action Card */}
+            <div className="flex flex-col justify-center">
+              <div className="bg-card border rounded-xl p-6 shadow-lg space-y-6 w-full">
                 {/* Input / Info */}
                 <div className="space-y-4">
                   <div>
@@ -617,9 +669,51 @@ export default function RecordingInterface() {
                 )}
               </div>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        )}
     </main>
   );
 }
+
+// Helper Component for Control Buttons
+function ControlBtn({
+  icon: Icon,
+  label,
+  onClick,
+  active = false,
+  offState = false,
+  variant = "default",
+}: {
+  icon: any;
+  label: string;
+  onClick?: () => void;
+  active?: boolean;
+  offState?: boolean;
+  variant?: "default" | "danger";
+}) {
+  return (
+    <div className="flex flex-col items-center gap-2 group/btn">
+      <button
+        onClick={onClick}
+        className={`h-11 w-11 rounded-full flex items-center justify-center transition-all duration-200 
+          ${variant === "danger"
+            ? "bg-[#ea4335] hover:bg-[#d93025] text-white"
+            : offState
+              ? "bg-[#ea4335] hover:bg-[#d93025] text-white"
+              : "bg-[#3c4043] hover:bg-[#45484c] text-white"
+          }
+          ${!offState && variant !== "danger"
+            ? "hover:scale-110"
+            : ""
+          }
+        `}
+      >
+        <Icon className="w-5 h-5" />
+      </button>
+      <span className="text-[10px] text-gray-400 opacity-0 group-hover/btn:opacity-100 transition-opacity absolute -top-8 bg-black/80 px-2 py-1 rounded">
+        {label}
+      </span>
+    </div>
+  );
+}
+
