@@ -48,10 +48,16 @@ export const createAudioMixer = (
   micStream: MediaStream | null,
   hasDisplayAudio: boolean
 ) => {
-  if (!hasDisplayAudio && !micStream) return null;
+
+  // if (!hasDisplayAudio && !micStream) return null;
 
   const destination = ctx.createMediaStreamDestination();
-  const mix = (stream: MediaStream, gainValue: number) => {
+
+  const mix = (stream: MediaStream | null, gainValue: number) => {
+    if (!stream) return;
+
+    const audioTracks = stream.getAudioTracks();
+    if (audioTracks.length === 0) return;
     const source = ctx.createMediaStreamSource(stream);
     const gain = ctx.createGain();
     gain.gain.value = gainValue;
@@ -60,6 +66,11 @@ export const createAudioMixer = (
 
   if (hasDisplayAudio) mix(displayStream, 0.7);
   if (micStream) mix(micStream, 1.5);
+
+  // If nothing was connected, return null
+  if (destination.stream.getAudioTracks().length === 0) {
+    return null;
+  }
 
   return destination;
 };
