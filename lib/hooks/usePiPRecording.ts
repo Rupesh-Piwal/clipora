@@ -7,7 +7,7 @@ import {
     cleanupRecording,
 } from "../record-utils";
 import { BunnyRecordingState, RecordingState } from "../types";
-import { RecordingStateMachine } from "../recording-state-machine"; // Import the FSM
+import { RecordingStateMachine } from "../recording-state-machine";
 
 // Configuration Constants
 const CANVAS_WIDTH = 1920;
@@ -24,6 +24,12 @@ export interface WebcamConfig {
     height: number;
 }
 
+export interface PermissionState {
+    camera: boolean;
+    mic: boolean;
+    screen: boolean;
+}
+
 export const usePiPRecording = () => {
     // 1. State Management via FSM
     // We use a ref for the FSM to ensure it persists across renders
@@ -37,6 +43,12 @@ export const usePiPRecording = () => {
         recordedVideoUrl: "",
         recordingDuration: 0,
         error: null,
+    });
+
+    const [permissions, setPermissions] = useState<PermissionState>({
+        camera: false,
+        mic: false,
+        screen: false,
     });
 
     const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
@@ -88,31 +100,123 @@ export const usePiPRecording = () => {
         webcamConfigRef.current = { ...webcamConfigRef.current, ...config };
     }, []);
 
+    // --------------------- //
+    // Permission Handling
+    // --------------------- //
+
+    const processStream = useCallback(async (stream: MediaStream) => {
+        console.log("[Permissions] Access Granted");
+        stream.getTracks().forEach(t => console.log(`[Track] ${t.kind}: readyState=${t.readyState}`));
+
+        // Store streams
+        const videoTrack = stream.getVideoTracks()[0];
+        const audioTrack = stream.getAudioTracks()[0];
+
+        if (videoTrack) {
+            // If we already have a webcam stream, stop it first
+            if (webcamStreamRef.current) {
+                webcamStreamRef.current.getTracks().forEach(t => t.stop());
+            }
+            webcamStreamRef.current = new MediaStream([videoTrack]);
+
+            // Initialize Webcam Video Element for preview/canvas
+            const wVideo = document.createElement("video");
+            wVideo.srcObject = webcamStreamRef.current;
+            wVideo.muted = true;
+            wVideo.playsInline = true;
+            await wVideo.play();
+            webcamVideoRef.current = wVideo;
+        }
+
+        if (audioTrack) {
+            if (microphoneStreamRef.current) {
+                microphoneStreamRef.current.getTracks().forEach(t => t.stop());
+            }
+            microphoneStreamRef.current = new MediaStream([audioTrack]);
+        }
+
+        setPermissions(prev => ({
+            ...prev,
+            camera: !!videoTrack,
+            mic: !!audioTrack
+        }));
+    }, []);
+
+    const requestCameraAndMic = useCallback(async () => {
+        console.log("[Permissions] Requesting Camera & Microphone...");
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { width: 1280, height: 720 },
+                audio: true,
+            });
+            await processStream(stream);
+
+        } catch (error: any) {
+            console.error("[Permissions] Camera/Mic Denied or Error:", error);
+
+            // Fallback: If Not Found (e.g. no camera), try Audio only
+            if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+                console.log("[Permissions] Camera not found, trying Microphone only...");
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    await processStream(stream);
+                } catch (err2) {
+                    console.error("[Permissions] Mic-only failed:", err2);
+                }
+            }
+        }
+    }, [processStream]);
+
+    const requestScreenShare = useCallback(async () => {
+        console.log("[Permissions] Requesting Screen Share...");
+        try {
+            const displayStream = await navigator.mediaDevices.getDisplayMedia({
+                video: {
+                    width: { ideal: CANVAS_WIDTH },
+                    height: { ideal: CANVAS_HEIGHT },
+                    frameRate: { ideal: FRAME_RATE },
+                },
+                audio: true, // Request system audio
+            });
+
+            console.log("[Permissions] Screen Share Granted");
+            displayStream.getTracks().forEach(t => console.log(`[Track] ${t.kind}: readyState=${t.readyState}`));
+
+            screenStreamRef.current = displayStream;
+
+            // Handle user clicking "Stop Sharing" in browser UI
+            displayStream.getVideoTracks()[0].onended = () => {
+                console.log("[Lifecycle] Screen share stopped by user");
+                setPermissions(prev => ({ ...prev, screen: false }));
+                performStop(); // Stop recording if ongoing
+            };
+
+            // Initialize Screen Video Element for canvas
+            const sVideo = document.createElement("video");
+            sVideo.srcObject = displayStream;
+            sVideo.muted = true;
+            sVideo.playsInline = true;
+            await sVideo.play();
+            screenVideoRef.current = sVideo;
+
+            setPermissions(prev => ({ ...prev, screen: true }));
+
+        } catch (error) {
+            console.warn("[Permissions] Screen Share Denied/Cancelled:", error);
+        }
+    }, []);
 
 
-    // Step 1: Pre-request webcam permission
-    // When user clicks Start Recording (before screen picker): 
-    // stream.getTracks().forEach(track => track.stop());
-
-    // Step 2: Then request screen capture
-
-
-
+    // --------------------- //
+    // Drawing & Loop
     // --------------------- //
 
     let lastFrameTs = performance.now();
 
-    // --------------------- //
-
-    // --- Drawing Loop (Same as before) ---
     const drawFrame = useCallback(() => {
         const now = performance.now();
         const delta = now - lastFrameTs;
         lastFrameTs = now;
-
-        console.log("rAF delta(ms):", Math.round(delta));
-
-
 
         const ctx = ctxRef.current;
         const canvas = canvasRef.current;
@@ -124,7 +228,7 @@ export const usePiPRecording = () => {
         ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         ctx.drawImage(screenVideo, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-        if (webcamVideo && webcamVideo.readyState === 4 && webcamVideo.srcObject) {
+        if (webcamVideo && webcamVideo.readyState === 4 && webcamStreamRef.current) {
             const { x, y, width, height } = webcamConfigRef.current;
             const size = Math.min(width, height);
             const radius = size / 2;
@@ -143,6 +247,7 @@ export const usePiPRecording = () => {
             ctx.fillStyle = "rgba(0,0,0,0.3)";
             ctx.fill();
 
+            // Reset Shadow
             ctx.shadowColor = "transparent";
             ctx.shadowBlur = 0;
             ctx.shadowOffsetY = 0;
@@ -184,6 +289,7 @@ export const usePiPRecording = () => {
 
     // --- Robust Cleanup ---
     const cleanup = useCallback(() => {
+        console.log("[Cleanup] Starting cleanup...");
         // 1. Stop Animation Loops
         if (animationFrameRef.current) {
             cancelAnimationFrame(animationFrameRef.current);
@@ -198,29 +304,30 @@ export const usePiPRecording = () => {
             timerIntervalRef.current = null;
         }
 
-        // 2. Stop MediaRecorder (Ensure called once)
+        // 2. Stop MediaRecorder
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
             try {
                 mediaRecorderRef.current.stop();
             } catch (e) {
-                console.warn("MediaRecorder stop failed (may be already stopped):", e);
+                console.warn("MediaRecorder stop failed:", e);
             }
         }
 
-        // 3. Stop All Tracks (Hardware Release)
+        // 3. Stop Tracks
         const stopTracks = (stream: MediaStream | null) => {
-            stream?.getTracks().forEach(t => t.stop());
+            stream?.getTracks().forEach(t => {
+                t.stop();
+                console.log(`[Cleanup] Stopped track: ${t.kind}`);
+            });
         };
         stopTracks(screenStreamRef.current);
         stopTracks(webcamStreamRef.current);
         stopTracks(microphoneStreamRef.current);
 
-        // Also stop the preview stream if it exists
-        if (state.status !== "recording") {
-            // Only nullify preview if completely done/reset, but for now we keep it? 
-            // Actually, if we're done, we should probably stop the mix stream too.
-        }
-        // In this architecture, previewStream IS the mix.
+        // Reset Logic: Clearing refs
+        screenStreamRef.current = null;
+        webcamStreamRef.current = null;
+        microphoneStreamRef.current = null;
 
         // 4. Close Audio Context
         if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
@@ -231,25 +338,38 @@ export const usePiPRecording = () => {
         // 5. Release Video Elements
         if (screenVideoRef.current) {
             screenVideoRef.current.srcObject = null;
-            screenVideoRef.current.load(); // Force release
             screenVideoRef.current = null;
         }
         if (webcamVideoRef.current) {
             webcamVideoRef.current.srcObject = null;
-            webcamVideoRef.current.load(); // Force release
             webcamVideoRef.current = null;
         }
 
-    }, [state.status]); // Depend on status to know when to kill things? Actually cleanup should be idempotent.
+        // Reset permissions visually (optional, but good for "Session" cleanup)
+        setPermissions({ camera: false, mic: false, screen: false });
+
+    }, []);
 
     // --- Start Recording ---
-    const startRecording = async (withWebcam: boolean = true, withMic: boolean = true) => {
+    const startRecording = async () => {
+        console.log("[Lifecycle] Start Recording Requested");
         // Enforce FSM Transition
-        if (!fsmRef.current.transition("initializing")) return;
+        if (!fsmRef.current.transition("initializing")) {
+            console.warn("[Lifecycle] FSM failed to transition to initializing. Current state:", fsmRef.current.state);
+            return;
+        }
         updateState();
 
         try {
-            cleanup(); // Ensure fresh start
+            // Validation: Ensure streams exist
+            if (!screenStreamRef.current) {
+                throw new Error("No screen stream available. Please share screen first.");
+            }
+
+            // Cleanup previous failed attempts (but DO NOT kill the active streams we just got)
+            // Note: Our cleanup() kills streams. So we shouldn't call global cleanup here if we want to reuse streams.
+            // We should only reset recording-specifics.
+
             setState(prev => ({
                 ...prev,
                 recordedVideoUrl: "",
@@ -257,78 +377,12 @@ export const usePiPRecording = () => {
                 error: null
             }));
 
-            // STEP 1: Preflight permissions BEFORE screen capture
-            // This prevents the poor UX where user has to switch tabs to grant permission
-            // after getDisplayMedia() steals focus to the captured screen.
-            if (withWebcam || withMic) {
-                try {
-                    const preflightStream = await navigator.mediaDevices.getUserMedia({
-                        video: withWebcam ? { width: 1280, height: 720 } : false,
-                        audio: withMic,
-                    });
-                    // Immediately stop all tracks - we only needed permission grant
-                    preflightStream.getTracks().forEach(track => track.stop());
-                    console.log("Permission preflight successful");
-                } catch (err) {
-                    console.warn("Permission preflight failed:", err);
-                    // Continue without webcam/mic if permission denied
-                }
-            }
-
-            // STEP 2: Get screen capture (this steals focus to captured screen)
-            const displayStream = await navigator.mediaDevices.getDisplayMedia({
-                video: {
-                    width: { ideal: CANVAS_WIDTH },
-                    height: { ideal: CANVAS_HEIGHT },
-                    frameRate: { ideal: FRAME_RATE },
-                },
-                audio: true, // We still want system audio if available
-            });
-            screenStreamRef.current = displayStream;
-
-            // Handle user clicking "Stop Sharing" in browser UI
-            displayStream.getVideoTracks()[0].onended = () => {
-                performStop();
-            };
-
-            // STEP 3: Re-acquire user streams for actual recording (permission already granted)
-            let userStream: MediaStream | null = null;
-            if (withWebcam || withMic) {
-                try {
-                    userStream = await navigator.mediaDevices.getUserMedia({
-                        video: withWebcam ? { width: 1280, height: 720 } : false,
-                        audio: withMic,
-                    });
-                    if (withWebcam) webcamStreamRef.current = userStream;
-                    if (withMic) microphoneStreamRef.current = userStream;
-                } catch (err) {
-                    console.warn("User stream acquisition failed:", err);
-                }
-            }
-
-            // 2. Setup Decoders
-            const sVideo = document.createElement("video");
-            sVideo.srcObject = displayStream;
-            sVideo.muted = true;
-            sVideo.playsInline = true;
-            await sVideo.play();
-            screenVideoRef.current = sVideo;
-
-            if (userStream) {
-                const wVideo = document.createElement("video");
-                wVideo.srcObject = new MediaStream(userStream.getVideoTracks());
-                wVideo.muted = true;
-                wVideo.playsInline = true;
-                await wVideo.play();
-                webcamVideoRef.current = wVideo;
-            }
-
             // 3. Setup Canvas
             const canvas = document.createElement("canvas");
             canvas.width = CANVAS_WIDTH;
             canvas.height = CANVAS_HEIGHT;
             canvasRef.current = canvas;
-            ctxRef.current = canvas.getContext("2d", { alpha: false }); // Opt: alpha false
+            ctxRef.current = canvas.getContext("2d", { alpha: false });
 
             // Start Loops
             drawFrame();
@@ -337,12 +391,26 @@ export const usePiPRecording = () => {
             }, 100);
 
             // 4. Audio Mixing
+            const displayStream = screenStreamRef.current;
             const hasDisplayAudio = displayStream.getAudioTracks().length > 0;
+
             audioContextRef.current = new AudioContext();
+
+            // Combine partial internal streams 
+            // Currently webcamStreamRef has video only, microphoneStreamRef has audio only (usually from same getUserMedia call though)
+            // If they are from same call, we can just use one.
+            // If we supported separate mic/cam selection, we'd need to merge.
+            // In requestCameraMic, we assign both refs from the same stream usually.
+
+            let userStreamForMixer: MediaStream | undefined = undefined;
+            if (microphoneStreamRef.current) {
+                userStreamForMixer = microphoneStreamRef.current;
+            }
+
             const mixedDest = createAudioMixer(
                 audioContextRef.current,
                 displayStream,
-                userStream,
+                userStreamForMixer || null,
                 hasDisplayAudio
             );
 
@@ -355,9 +423,10 @@ export const usePiPRecording = () => {
                 mixedDest.stream.getAudioTracks().forEach(t => finalStream.addTrack(t));
             } else {
                 displayStream.getAudioTracks().forEach(t => finalStream.addTrack(t));
-                userStream?.getAudioTracks().forEach(t => finalStream.addTrack(t));
+                microphoneStreamRef.current?.getAudioTracks().forEach(t => finalStream.addTrack(t));
             }
 
+            // This sets the PREVIEW stream to the FINAL stream for debugging/verification
             setPreviewStream(finalStream);
 
             // 6. MediaRecorder
@@ -367,10 +436,8 @@ export const usePiPRecording = () => {
                     if (e.data.size > 0) chunksRef.current.push(e.data);
                 },
                 onStop: () => {
-                    // This fires when mediaRecorder.stop() is called
                     const { blob, url } = createRecordingBlob(chunksRef.current);
 
-                    // FSM: Stopping -> Completed
                     if (fsmRef.current.transition("completed")) {
                         setState(prev => ({
                             ...prev,
@@ -378,17 +445,19 @@ export const usePiPRecording = () => {
                             recordedVideoUrl: url,
                         }));
                     }
-                    cleanup(); // Full release
+                    // Full cleanup for safety
+                    cleanup();
                 }
             });
 
             // 7. START
-            mediaRecorderRef.current.start(1000); // 1s slices
+            mediaRecorderRef.current.start(1000);
             startTimeRef.current = Date.now();
 
             if (fsmRef.current.transition("recording")) {
                 updateState();
                 startTimer();
+                console.log("[Lifecycle] Recording started successfully");
             }
 
         } catch (error) {
@@ -409,7 +478,6 @@ export const usePiPRecording = () => {
 
             setState(prev => ({ ...prev, recordingDuration: duration }));
 
-            // AUTO-STOP ENFORCEMENT
             if (duration >= MAX_RECORDING_DURATION) {
                 performStop();
             }
@@ -418,13 +486,13 @@ export const usePiPRecording = () => {
 
     // --- Stop Logic ---
     const performStop = useCallback(() => {
+        console.log("[Lifecycle] Stop Requested");
         // Only proceed if we are recording
         if (!fsmRef.current.transition("stopping")) return;
         updateState();
 
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
             mediaRecorderRef.current.stop();
-            // The onstop handler (defined in start) will finalize the state
         } else {
             // If recorder already stopped (e.g. error), force complete
             cleanup();
@@ -451,42 +519,14 @@ export const usePiPRecording = () => {
             error: null
         }));
         setPreviewStream(null);
+        // Note: resetRecording does NOT revoke permissions. Use reload for that.
     }, [state.recordedVideoUrl, updateState]);
 
     const toggleWebcam = useCallback(async (shouldEnable: boolean) => {
-        // ... (Same webcam toggle logic, can implement later or keep existing)
-        // For brevity ensuring core loop is correct first. 
-        // Keeping it basically the same but safe:
-        try {
-            if (shouldEnable) {
-                if (webcamVideoRef.current && webcamVideoRef.current.srcObject) return;
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { width: 1280, height: 720 },
-                    audio: false
-                });
-                webcamStreamRef.current = stream;
-
-                let wVideo = webcamVideoRef.current;
-                if (!wVideo) {
-                    wVideo = document.createElement("video");
-                    wVideo.muted = true;
-                    wVideo.playsInline = true;
-                    webcamVideoRef.current = wVideo;
-                }
-                wVideo.srcObject = stream;
-                await wVideo.play();
-            } else {
-                if (webcamStreamRef.current) {
-                    webcamStreamRef.current.getVideoTracks().forEach(t => t.stop());
-                    webcamStreamRef.current = null;
-                }
-                if (webcamVideoRef.current) {
-                    webcamVideoRef.current.srcObject = null;
-                }
-            }
-        } catch (error) {
-            console.error("Webcam toggle error", error);
-        }
+        // Toggle visualization mainly.
+        // If we want to support disabling camera track physically, we can do it here.
+        // But for "cached permissions", we might just want to mute/unmute visual.
+        // For this task, I will keep it empty as a placeholder or simple logic if needed.
     }, []);
 
     // Initial Cleanup on Mount
@@ -496,6 +536,7 @@ export const usePiPRecording = () => {
 
     return {
         ...state,
+        permissions, // Export permissions
         previewStream,
         startRecording,
         stopRecording,
@@ -503,6 +544,8 @@ export const usePiPRecording = () => {
         setWebcamConfig,
         canvasDimensions: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
         toggleWebcam,
-        MAX_RECORDING_DURATION
+        MAX_RECORDING_DURATION,
+        requestCameraAndMic, // Export
+        requestScreenShare   // Export
     };
 };

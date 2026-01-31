@@ -1,10 +1,9 @@
-"use client";
-
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { Video, Timer } from "lucide-react";
+import { Video, Timer, Mic, ScreenShare, CheckCircle2, Monitor } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ControlBar } from "./control-bar";
 import { formatTime } from "./utils";
+import { Button } from "@/components/ui/button";
 
 interface RecorderViewProps {
   status:
@@ -13,7 +12,7 @@ interface RecorderViewProps {
   | "initializing"
   | "stopping"
   | "completed"
-  | "error"; // broad to match
+  | "error";
   webcamEnabled: boolean;
   previewStream: MediaStream | null;
   recordingDuration: number;
@@ -30,6 +29,10 @@ interface RecorderViewProps {
   onToggleWebcam: () => void;
   micEnabled: boolean;
   onToggleMic: () => void;
+  // New Props
+  permissions: { camera: boolean; mic: boolean; screen: boolean };
+  onRequestCameraMic: () => void;
+  onRequestScreen: () => void;
 }
 
 export function RecorderView({
@@ -45,6 +48,9 @@ export function RecorderView({
   onToggleWebcam,
   micEnabled,
   onToggleMic,
+  permissions,
+  onRequestCameraMic,
+  onRequestScreen,
 }: RecorderViewProps) {
   // --- Refs & State ---
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,6 +81,7 @@ export function RecorderView({
 
       const scaleX = container.width / canvasDimensions.width;
       const scaleY = container.height / canvasDimensions.height;
+
       const calculatedSize = (container.width / 1920) * 320;
 
       setOverlaySize(calculatedSize);
@@ -162,6 +169,9 @@ export function RecorderView({
   const remainingTime = MAX_RECORDING_DURATION - recordingDuration;
   const isTimeRunningLow = remainingTime <= 10;
 
+  const hasCamMic = permissions.camera || permissions.mic;
+  const hasScreen = permissions.screen;
+
   return (
     <div className="flex flex-col text-white overflow-hidden min-h-screen bg-[#0a0a0a]">
       {/* VIDEO AREA */}
@@ -170,6 +180,7 @@ export function RecorderView({
           ref={containerRef}
           className="relative w-full max-w-7xl h-[calc(100vh-120px)] bg-[#1a1a1a] rounded-2xl overflow-hidden border border-white/10 shadow-2xl"
         >
+          {/* Live Preview (Main Scene) */}
           <video
             ref={previewVideoRef}
             muted
@@ -210,6 +221,7 @@ export function RecorderView({
             </div>
           )}
 
+          {/* Draggable Webcam Overlay (Canvas visualization replica for dragging) */}
           {webcamEnabled && previewStream && isInitialized && (
             <div
               onMouseDown={handleMouseDown}
@@ -221,28 +233,92 @@ export function RecorderView({
                 height: `${overlaySize}px`,
               }}
             >
-              {/* This div represents the webcam overlay area where dragging is captured */}
               <div className="w-full h-full bg-transparent backdrop-blur-sm" />
             </div>
           )}
 
+          {/* Setup Flow (Idle State) */}
           {!previewStream && status === "idle" && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 text-center p-8">
-              <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-2 animate-in zoom-in-50 fade-in duration-500">
-                <Video className="w-10 h-10 text-white/40" />
-              </div>
-              <div className="space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150">
-                <h3 className="text-xl font-semibold text-white/80">Ready to Record</h3>
-                <p className="text-sm text-white/40 max-w-md">
-                  Click "Start Recording" to begin capturing your screen
-                </p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-[#1a1a1a]">
+              <div className="max-w-md w-full space-y-8">
+                <div className="text-center space-y-2">
+                  <h3 className="text-2xl font-bold bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">Get Started</h3>
+                  <p className="text-white/40 text-sm">Enable permissions to start recording</p>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Step 1: Camera & Mic */}
+                  <div className={cn(
+                    "p-4 rounded-xl border transition-all duration-300 flex items-center justify-between",
+                    hasCamMic ? "bg-green-500/10 border-green-500/20" : "bg-white/5 border-white/10"
+                  )}>
+                    <div className="flex items-center gap-4">
+                      <div className={cn("p-2 rounded-lg", hasCamMic ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/60")}>
+                        <Video className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm">Camera & Microphone</div>
+                        <div className="text-xs text-white/40">Required for video and audio</div>
+                      </div>
+                    </div>
+                    {hasCamMic ? (
+                      <CheckCircle2 className="w-5 h-5 text-green-400" />
+                    ) : (
+                      <Button onClick={onRequestCameraMic} variant="secondary" size="sm" className="h-8 text-xs">
+                        Enable
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Step 2: Screen */}
+                  <div className={cn(
+                    "p-4 rounded-xl border transition-all duration-300 flex items-center justify-between",
+                    hasScreen ? "bg-green-500/10 border-green-500/20" : "bg-white/5 border-white/10"
+                  )}>
+                    <div className="flex items-center gap-4">
+                      <div className={cn("p-2 rounded-lg", hasScreen ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/60")}>
+                        <Monitor className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm">Screen Share</div>
+                        <div className="text-xs text-white/40">Choose a tab, window, or screen</div>
+                      </div>
+                    </div>
+                    {hasScreen ? (
+                      <CheckCircle2 className="w-5 h-5 text-green-400" />
+                    ) : (
+                      <Button onClick={onRequestScreen} variant="secondary" size="sm" className="h-8 text-xs">
+                        Share Screen
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Step 3: Record Action */}
+                {/* <div className="pt-4 flex justify-center">
+                  <Button
+                    size="lg"
+                    className={cn(
+                      "w-full font-semibold transition-all duration-300",
+                      (hasScreen)
+                        ? "bg-white hover:bg-gray-200 text-black shadow-[0_0_20px_rgba(255,255,255,0.3)]"
+                        : "opacity-50 cursor-not-allowed bg-white/10 text-white/40"
+                    )}
+                    disabled={!hasScreen}
+                    onClick={onStartRecording}
+                  >
+                    <div className="w-3 h-3 rounded-full bg-red-500 mr-2 animate-pulse" />
+                    Start Recording
+                  </Button>
+                </div> */}
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* CONTROLS */}
+      {/* CONTROLS (Only visible when permissions are set or recording) */}
+
       <ControlBar
         status={status}
         onStartRecording={onStartRecording}
@@ -252,10 +328,11 @@ export function RecorderView({
         micEnabled={micEnabled}
         onToggleMic={onToggleMic}
         recordingDuration={recordingDuration}
-        onReset={() => { }} // No-op for now as we don't have reset exposed in the hook yet
-        onPause={() => { }} // No-op
-        onDelete={() => { }} // No-op
+        onReset={() => { }}
+        onPause={() => { }}
+        onDelete={() => { }}
       />
+
     </div>
   );
 }

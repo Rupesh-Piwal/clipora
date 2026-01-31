@@ -29,6 +29,9 @@ export default function RecordingInterface() {
     recordedBlob,
     resetRecording,
     MAX_RECORDING_DURATION,
+    permissions,
+    requestCameraAndMic,
+    requestScreenShare,
   } = usePiPRecording();
 
   // --- Local UI State ---
@@ -57,7 +60,7 @@ export default function RecordingInterface() {
   // --- Actions ---
 
   const handleStartRecording = async () => {
-    await startRecording(webcamEnabled, micEnabled);
+    await startRecording(); // No args needed now
   };
 
   const handleStopRecording = () => {
@@ -136,6 +139,9 @@ export default function RecordingInterface() {
           onToggleWebcam={() => setWebcamEnabled(!webcamEnabled)}
           micEnabled={micEnabled}
           onToggleMic={() => setMicEnabled(!micEnabled)}
+          permissions={permissions}
+          onRequestCameraMic={requestCameraAndMic}
+          onRequestScreen={requestScreenShare}
         />
       </main>
     );
