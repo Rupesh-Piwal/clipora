@@ -10,7 +10,7 @@ import {
 import { LoadingView } from "./recording/loading-view";
 import { RecorderView } from "./recording/recorder-view";
 import { ReviewView } from "./recording/review-view";
-import { Button } from "@/components/ui/button"; // Fallback/Error UI
+import { Button } from "@/components/ui/button";
 
 type ReviewState = "review" | "uploading" | "success" | "error";
 
@@ -24,7 +24,6 @@ export default function RecordingInterface() {
     previewStream,
     setWebcamConfig,
     canvasDimensions,
-    toggleWebcam,
     recordedVideoUrl,
     recordedBlob,
     resetRecording,
@@ -32,11 +31,15 @@ export default function RecordingInterface() {
     permissions,
     requestCameraAndMic,
     requestScreenShare,
+    // New exports
+    webcamPreviewStream,
+    screenPreviewStream,
+    canRecord,
+    cameraEnabled,
+    micEnabled,
+    toggleCamera,
+    toggleMic,
   } = usePiPRecording();
-
-  // --- Local UI State ---
-  const [webcamEnabled, setWebcamEnabled] = useState(true);
-  const [micEnabled, setMicEnabled] = useState(true);
 
   // Review / Upload State
   const [reviewState, setReviewState] = useState<ReviewState>("review");
@@ -50,17 +53,10 @@ export default function RecordingInterface() {
   const [videoLinks, setVideoLinks] = useState<string[]>(["", "", ""]);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  // --- Runtime Logic ---
-  useEffect(() => {
-    if (status === "recording") {
-      toggleWebcam(webcamEnabled);
-    }
-  }, [webcamEnabled, status, toggleWebcam]);
-
   // --- Actions ---
 
   const handleStartRecording = async () => {
-    await startRecording(); // No args needed now
+    await startRecording();
   };
 
   const handleStopRecording = () => {
@@ -96,11 +92,10 @@ export default function RecordingInterface() {
         setUploadProgress(progress);
       });
 
-      // 3. Success
-      // Save metadata to DB
+      // 3. Success - Save metadata to DB
       await saveVideoMetadata(
         videoId,
-        "", // Title is unused/optional now
+        "",
         videoDescription,
         videoLinks,
       );
@@ -128,7 +123,7 @@ export default function RecordingInterface() {
       <main className="flex-1 max-w-8xl mx-auto h-screen bg-[#000101]">
         <RecorderView
           status={status}
-          webcamEnabled={webcamEnabled}
+          webcamEnabled={cameraEnabled}
           previewStream={previewStream}
           recordingDuration={recordingDuration}
           MAX_RECORDING_DURATION={MAX_RECORDING_DURATION}
@@ -136,12 +131,15 @@ export default function RecordingInterface() {
           setWebcamConfig={setWebcamConfig}
           onStartRecording={handleStartRecording}
           onStopRecording={handleStopRecording}
-          onToggleWebcam={() => setWebcamEnabled(!webcamEnabled)}
+          onToggleWebcam={() => toggleCamera(!cameraEnabled)}
           micEnabled={micEnabled}
-          onToggleMic={() => setMicEnabled(!micEnabled)}
+          onToggleMic={() => toggleMic(!micEnabled)}
           permissions={permissions}
           onRequestCameraMic={requestCameraAndMic}
           onRequestScreen={requestScreenShare}
+          webcamPreviewStream={webcamPreviewStream}
+          screenPreviewStream={screenPreviewStream}
+          canRecord={canRecord}
         />
       </main>
     );

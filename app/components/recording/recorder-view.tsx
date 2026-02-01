@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { Video, Timer, Mic, ScreenShare, CheckCircle2, Monitor } from "lucide-react";
+import { Video, Timer, Mic, Monitor, CheckCircle2, Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ControlBar } from "./control-bar";
 import { formatTime } from "./utils";
@@ -29,10 +29,14 @@ interface RecorderViewProps {
   onToggleWebcam: () => void;
   micEnabled: boolean;
   onToggleMic: () => void;
-  // New Props
+  // Permission props
   permissions: { camera: boolean; mic: boolean; screen: boolean };
   onRequestCameraMic: () => void;
   onRequestScreen: () => void;
+  // New props
+  webcamPreviewStream: MediaStream | null;
+  screenPreviewStream: MediaStream | null;
+  canRecord: boolean;
 }
 
 export function RecorderView({
@@ -51,10 +55,15 @@ export function RecorderView({
   permissions,
   onRequestCameraMic,
   onRequestScreen,
+  webcamPreviewStream,
+  screenPreviewStream,
+  canRecord,
 }: RecorderViewProps) {
   // --- Refs & State ---
   const containerRef = useRef<HTMLDivElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement | null>(null);
+  const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
+  const screenVideoRef = useRef<HTMLVideoElement | null>(null);
 
   const [webcamPos, setWebcamPos] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -91,7 +100,7 @@ export function RecorderView({
       });
       setIsInitialized(true);
     }
-  }, [containerRef.current, canvasDimensions, isInitialized]);
+  }, [canvasDimensions, isInitialized]);
 
   useEffect(() => {
     window.addEventListener("resize", updateOverlaySize);
@@ -150,15 +159,13 @@ export function RecorderView({
     };
   }, [isDragging, canvasDimensions, setWebcamConfig, overlaySize]);
 
-  // --- Video Source ---
+  // --- Video Sources ---
+  // Main preview (recording stream)
   useEffect(() => {
     if (!previewVideoRef.current) return;
     if (
       previewStream &&
-      (status === "idle" ||
-        status === "recording" ||
-        status === "initializing" ||
-        status === "stopping")
+      (status === "recording" || status === "initializing" || status === "stopping")
     ) {
       previewVideoRef.current.srcObject = previewStream;
     } else {
@@ -166,31 +173,160 @@ export function RecorderView({
     }
   }, [previewStream, status]);
 
+  // Webcam preview (always visible after permission)
+  useEffect(() => {
+    if (!webcamVideoRef.current) return;
+    if (webcamPreviewStream && webcamEnabled) {
+      webcamVideoRef.current.srcObject = webcamPreviewStream;
+    } else {
+      webcamVideoRef.current.srcObject = null;
+    }
+  }, [webcamPreviewStream, webcamEnabled]);
+
+  // Screen preview (visible when screen sharing)
+  useEffect(() => {
+    if (!screenVideoRef.current) return;
+    if (screenPreviewStream) {
+      screenVideoRef.current.srcObject = screenPreviewStream;
+    } else {
+      screenVideoRef.current.srcObject = null;
+    }
+  }, [screenPreviewStream]);
+
   const remainingTime = MAX_RECORDING_DURATION - recordingDuration;
   const isTimeRunningLow = remainingTime <= 10;
 
-  const hasCamMic = permissions.camera || permissions.mic;
-  const hasScreen = permissions.screen;
+  // Permission gate check
+  const hasAnyPermission = permissions.camera || permissions.mic;
+  const isRecordingActive = status === "recording" || status === "initializing" || status === "stopping";
 
+  // =============================================
+  // PERMISSION GATE SCREEN
+  // =============================================
+  if (!hasAnyPermission && status === "idle") {
+    return (
+      <div className="flex flex-col text-white overflow-hidden min-h-screen bg-[#0a0a0a]">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="max-w-md w-full space-y-8 p-8">
+            {/* Header */}
+            <div className="text-center space-y-3">
+              <div className="w-20 h-20 mx-auto bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-full flex items-center justify-center mb-6 ring-1 ring-white/10">
+                <Camera className="w-10 h-10 text-white/60" />
+              </div>
+              <h2 className="text-3xl font-bold bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">
+                Permission to record
+              </h2>
+              <p className="text-white/50 text-base">
+                We need access to your camera and microphone.
+              </p>
+            </div>
+
+            {/* Enable Button */}
+            <div className="pt-4">
+              <Button
+                onClick={onRequestCameraMic}
+                size="lg"
+                className="w-full h-14 text-base font-semibold bg-white hover:bg-gray-100 text-black shadow-[0_0_30px_rgba(255,255,255,0.15)] transition-all duration-300 hover:shadow-[0_0_40px_rgba(255,255,255,0.25)]"
+              >
+                <Video className="w-5 h-5 mr-3" />
+                Enable camera & microphone
+              </Button>
+            </div>
+
+            {/* Info Text */}
+            <p className="text-center text-white/30 text-sm">
+              Your browser will ask for permission. Click "Allow" to continue.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // =============================================
+  // MAIN RECORDING VIEW
+  // =============================================
   return (
     <div className="flex flex-col text-white overflow-hidden min-h-screen bg-[#0a0a0a]">
       {/* VIDEO AREA */}
-      <div className="flex-1 flex items-center justify-center p-6 relative">
+      <div className="flex-1 flex items-center justify-center p-4 relative">
         <div
           ref={containerRef}
-          className="relative w-full max-w-7xl h-[calc(100vh-120px)] bg-[#1a1a1a] rounded-2xl overflow-hidden border border-white/10 shadow-2xl"
+          className="relative w-full max-w-7xl h-[calc(100vh-160px)] bg-[#1a1a1a] rounded-2xl overflow-hidden border border-white/10 shadow-2xl"
         >
-          {/* Live Preview (Main Scene) */}
-          <video
-            ref={previewVideoRef}
-            muted
-            playsInline
-            autoPlay
-            className={cn(
-              "absolute inset-0 w-full h-full object-contain transition-opacity duration-500",
-              previewStream ? "opacity-100" : "opacity-0",
-            )}
-          />
+          {/* Recording Preview (shows during recording) */}
+          {isRecordingActive && (
+            <video
+              ref={previewVideoRef}
+              muted
+              playsInline
+              autoPlay
+              className={cn(
+                "absolute inset-0 w-full h-full object-contain transition-opacity duration-500",
+                previewStream ? "opacity-100" : "opacity-0",
+              )}
+            />
+          )}
+
+          {/* Split Layout: Screen + Webcam (when idle and both are available) */}
+          {!isRecordingActive && (
+            <div className="absolute inset-0 flex">
+              {/* Screen Preview (Left) */}
+              {permissions.screen && screenPreviewStream ? (
+                <div className={cn(
+                  "relative bg-[#0a0a0a] flex items-center justify-center",
+                  permissions.camera && webcamEnabled ? "w-2/3" : "w-full"
+                )}>
+                  <video
+                    ref={screenVideoRef}
+                    muted
+                    playsInline
+                    autoPlay
+                    className="w-full h-full object-contain"
+                  />
+                  {/* Screen label */}
+                  <div className="absolute bottom-4 left-4 bg-blue-500/20 text-blue-400 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 border border-blue-500/30">
+                    <Monitor className="w-3 h-3" />
+                    Screen
+                  </div>
+                </div>
+              ) : (
+                /* Empty state when no screen share */
+                <div className={cn(
+                  "relative bg-[#1a1a1a] flex flex-col items-center justify-center",
+                  permissions.camera && webcamEnabled ? "w-2/3" : "w-full"
+                )}>
+                  <div className="text-center space-y-4">
+                    <div className="w-16 h-16 mx-auto bg-white/5 rounded-full flex items-center justify-center ring-1 ring-white/10">
+                      <Monitor className="w-8 h-8 text-white/30" />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-white/40 text-sm">No screen selected</p>
+                      <p className="text-white/25 text-xs">Click "Screen" below to share</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Webcam Preview (Right) - Always visible if camera enabled */}
+              {permissions.camera && webcamEnabled && webcamPreviewStream && (
+                <div className="w-1/3 relative bg-[#0a0a0a] flex items-center justify-center border-l border-white/10">
+                  <video
+                    ref={webcamVideoRef}
+                    muted
+                    playsInline
+                    autoPlay
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Webcam label */}
+                  <div className="absolute bottom-4 left-4 bg-purple-500/20 text-purple-400 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 border border-purple-500/30">
+                    <Video className="w-3 h-3" />
+                    Camera
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* OVERLAYS */}
           <div className="absolute top-6 left-6 z-10 flex flex-col gap-3">
@@ -221,11 +357,11 @@ export function RecorderView({
             </div>
           )}
 
-          {/* Draggable Webcam Overlay (Canvas visualization replica for dragging) */}
-          {webcamEnabled && previewStream && isInitialized && (
+          {/* Draggable Webcam Overlay (during recording) */}
+          {isRecordingActive && webcamEnabled && previewStream && isInitialized && (
             <div
               onMouseDown={handleMouseDown}
-              className="absolute z-20 cursor-move rounded-2xl overflow-hidden shadow-2xl ring-2 ring-white/20 hover:ring-white/40 transition-all duration-300 hover:scale-105"
+              className="absolute z-20 cursor-move rounded-full overflow-hidden shadow-2xl ring-2 ring-white/20 hover:ring-white/40 transition-all duration-300 hover:scale-105"
               style={{
                 left: webcamPos.x,
                 top: webcamPos.y,
@@ -236,89 +372,10 @@ export function RecorderView({
               <div className="w-full h-full bg-transparent backdrop-blur-sm" />
             </div>
           )}
-
-          {/* Setup Flow (Idle State) */}
-          {!previewStream && status === "idle" && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-[#1a1a1a]">
-              <div className="max-w-md w-full space-y-8">
-                <div className="text-center space-y-2">
-                  <h3 className="text-2xl font-bold bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">Get Started</h3>
-                  <p className="text-white/40 text-sm">Enable permissions to start recording</p>
-                </div>
-
-                <div className="space-y-4">
-                  {/* Step 1: Camera & Mic */}
-                  <div className={cn(
-                    "p-4 rounded-xl border transition-all duration-300 flex items-center justify-between",
-                    hasCamMic ? "bg-green-500/10 border-green-500/20" : "bg-white/5 border-white/10"
-                  )}>
-                    <div className="flex items-center gap-4">
-                      <div className={cn("p-2 rounded-lg", hasCamMic ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/60")}>
-                        <Video className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="font-medium text-sm">Camera & Microphone</div>
-                        <div className="text-xs text-white/40">Required for video and audio</div>
-                      </div>
-                    </div>
-                    {hasCamMic ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-400" />
-                    ) : (
-                      <Button onClick={onRequestCameraMic} variant="secondary" size="sm" className="h-8 text-xs">
-                        Enable
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Step 2: Screen */}
-                  <div className={cn(
-                    "p-4 rounded-xl border transition-all duration-300 flex items-center justify-between",
-                    hasScreen ? "bg-green-500/10 border-green-500/20" : "bg-white/5 border-white/10"
-                  )}>
-                    <div className="flex items-center gap-4">
-                      <div className={cn("p-2 rounded-lg", hasScreen ? "bg-green-500/20 text-green-400" : "bg-white/10 text-white/60")}>
-                        <Monitor className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="font-medium text-sm">Screen Share</div>
-                        <div className="text-xs text-white/40">Choose a tab, window, or screen</div>
-                      </div>
-                    </div>
-                    {hasScreen ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-400" />
-                    ) : (
-                      <Button onClick={onRequestScreen} variant="secondary" size="sm" className="h-8 text-xs">
-                        Share Screen
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Step 3: Record Action */}
-                {/* <div className="pt-4 flex justify-center">
-                  <Button
-                    size="lg"
-                    className={cn(
-                      "w-full font-semibold transition-all duration-300",
-                      (hasScreen)
-                        ? "bg-white hover:bg-gray-200 text-black shadow-[0_0_20px_rgba(255,255,255,0.3)]"
-                        : "opacity-50 cursor-not-allowed bg-white/10 text-white/40"
-                    )}
-                    disabled={!hasScreen}
-                    onClick={onStartRecording}
-                  >
-                    <div className="w-3 h-3 rounded-full bg-red-500 mr-2 animate-pulse" />
-                    Start Recording
-                  </Button>
-                </div> */}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* CONTROLS (Only visible when permissions are set or recording) */}
-
+      {/* CONTROL BAR */}
       <ControlBar
         status={status}
         onStartRecording={onStartRecording}
@@ -331,8 +388,10 @@ export function RecorderView({
         onReset={() => { }}
         onPause={() => { }}
         onDelete={() => { }}
+        screenShareEnabled={permissions.screen}
+        onToggleScreenShare={onRequestScreen}
+        canRecord={canRecord}
       />
-
     </div>
   );
 }

@@ -3,34 +3,41 @@
 import { useState, useEffect } from "react";
 import {
   Mic,
+  MicOff,
   Video,
   VideoOff,
   RotateCcw,
   Pause,
   Trash2,
   Pen,
+  Monitor,
+  MonitorOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ControlBarProps {
   status:
-    | "idle"
-    | "dest"
-    | "initializing"
-    | "recording"
-    | "stopping"
-    | "completed"
-    | "error";
+  | "idle"
+  | "dest"
+  | "initializing"
+  | "recording"
+  | "stopping"
+  | "completed"
+  | "error";
   onStartRecording: () => void;
   onStopRecording: () => void;
   webcamEnabled: boolean;
   onToggleWebcam: () => void;
   micEnabled: boolean;
   onToggleMic: () => void;
-  recordingDuration?: number; // Pass duration for the timer if available
+  recordingDuration?: number;
   onReset?: () => void;
   onPause?: () => void;
   onDelete?: () => void;
+  // New props
+  screenShareEnabled: boolean;
+  onToggleScreenShare: () => void;
+  canRecord: boolean;
 }
 
 export function ControlBar({
@@ -44,6 +51,9 @@ export function ControlBar({
   recordingDuration = 0,
   onReset,
   onPause,
+  screenShareEnabled,
+  onToggleScreenShare,
+  canRecord,
 }: ControlBarProps) {
   const [formattedTime, setFormattedTime] = useState("00:00");
 
@@ -58,18 +68,54 @@ export function ControlBar({
   if (status === "idle") {
     return (
       <div className="flex items-center justify-center gap-8 pb-10">
-        {/* Record/Start Button */}
+        {/* Record/Start Button - DISABLED when no media source */}
         <div className="flex flex-col items-center gap-2">
           <button
             onClick={onStartRecording}
-            className="bg-[#f84d4d] hover:bg-[#ff5f5f] text-white rounded-[14px] flex items-center justify-center gap-2 transition-all duration-200 shadow-lg group px-7 py-3 cursor-pointer"
+            disabled={!canRecord}
+            className={cn(
+              "rounded-[14px] flex items-center justify-center gap-2 transition-all duration-200 shadow-lg group px-7 py-3",
+              canRecord
+                ? "bg-[#f84d4d] hover:bg-[#ff5f5f] text-white cursor-pointer"
+                : "bg-[#f84d4d]/30 text-white/40 cursor-not-allowed"
+            )}
           >
-            <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center">
-              <div className="w-2.5 h-2.5 bg-[#f84d4d] rounded-full group-hover:scale-90 transition-transform" />
+            <div className={cn(
+              "w-5 h-5 rounded-full flex items-center justify-center",
+              canRecord ? "bg-white" : "bg-white/30"
+            )}>
+              <div className={cn(
+                "w-2.5 h-2.5 rounded-full transition-transform",
+                canRecord
+                  ? "bg-[#f84d4d] group-hover:scale-90"
+                  : "bg-[#f84d4d]/50"
+              )} />
             </div>
             <span className="text-lg font-semibold tracking-tight">Record</span>
           </button>
-          <span className="text-sm font-medium text-gray-400">Start</span>
+          <span className="text-sm font-medium text-gray-400">
+            {canRecord ? "Start" : "Enable source"}
+          </span>
+        </div>
+
+        {/* Screen Share Toggle */}
+        <div className="flex flex-col items-center gap-2">
+          <button
+            onClick={onToggleScreenShare}
+            className={cn(
+              "p-2 flex items-center justify-center rounded-[14px] transition-all duration-200 cursor-pointer",
+              screenShareEnabled
+                ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 ring-1 ring-blue-500/30"
+                : "bg-[#2a2a2a]/40 text-gray-600 hover:bg-[#2a2a2a]/60",
+            )}
+          >
+            {screenShareEnabled ? (
+              <Monitor className="w-5 h-5" />
+            ) : (
+              <MonitorOff className="w-5 h-5 opacity-40" />
+            )}
+          </button>
+          <span className="text-sm font-medium text-gray-400">Screen</span>
         </div>
 
         {/* Mic Toggle */}
@@ -77,13 +123,17 @@ export function ControlBar({
           <button
             onClick={onToggleMic}
             className={cn(
-              "p-2 flex items-center justify-center rounded-[24px] transition-all duration-200 cursor-pointer",
+              "p-2 flex items-center justify-center rounded-[14px] transition-all duration-200 cursor-pointer",
               micEnabled
-                ? "bg-[#2a2a2a] text-white hover:bg-[#333333]"
+                ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 ring-1 ring-emerald-500/30"
                 : "bg-[#2a2a2a]/40 text-gray-600 hover:bg-[#2a2a2a]/60",
             )}
           >
-            <Mic className={cn("w-5 h-5", !micEnabled && "opacity-40")} />
+            {micEnabled ? (
+              <Mic className="w-5 h-5" />
+            ) : (
+              <MicOff className="w-5 h-5 opacity-40" />
+            )}
           </button>
           <span className="text-sm font-medium text-gray-400">Mic</span>
         </div>
@@ -95,7 +145,7 @@ export function ControlBar({
             className={cn(
               "p-2 flex items-center justify-center rounded-[14px] transition-all duration-200 cursor-pointer",
               webcamEnabled
-                ? "bg-[#2a2a2a] text-white hover:bg-[#333333]"
+                ? "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 ring-1 ring-purple-500/30"
                 : "bg-[#2a2a2a]/40 text-gray-600 hover:bg-[#2a2a2a]/60",
             )}
           >
@@ -150,32 +200,31 @@ export function ControlBar({
           >
             <Pause className="w-4.5 h-4.5" />
           </button>
-
-          {/* Delete */}
-          {/* <button
-            onClick={onDelete}
-            className="w-9 h-9 flex items-center justify-center rounded-full text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
-            title="Delete"
-          >
-            <Trash2 className="w-4.5 h-4.5" />
-          </button> */}
         </div>
-
-        {/* Divider */}
-        {/* <div className="w-px h-9 bg-white/10" /> */}
-
-        {/* Tools Group */}
-        {/* <div className="text-white/40">
-          <button className="w-10 h-10 flex items-center justify-center rounded-full hover:text-white hover:bg-white/10 transition-all duration-200">
-            <Pen className="w-5 h-5" />
-          </button>
-        </div> */}
 
         {/* Divider */}
         <div className="w-px h-9 bg-white/10" />
 
         {/* Toggles Group */}
         <div className="flex items-center gap-2 pr-1.5">
+          {/* Screen Toggle */}
+          <button
+            onClick={onToggleScreenShare}
+            className={cn(
+              "w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200",
+              screenShareEnabled
+                ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 ring-1 ring-blue-500/30"
+                : "bg-white/10 text-white/40 hover:bg-white/20",
+            )}
+            title="Toggle Screen Share"
+          >
+            {screenShareEnabled ? (
+              <Monitor className="w-4 h-4" />
+            ) : (
+              <MonitorOff className="w-4 h-4" />
+            )}
+          </button>
+
           {/* Cam Toggle */}
           <button
             onClick={onToggleWebcam}
@@ -195,7 +244,7 @@ export function ControlBar({
           </button>
 
           {/* Mic Toggle */}
-          {/* <button
+          <button
             onClick={onToggleMic}
             className={cn(
               "w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200",
@@ -205,8 +254,12 @@ export function ControlBar({
             )}
             title="Toggle Microphone"
           >
-            <Mic className={cn("w-4 h-4", !micEnabled && "opacity-40")} />
-          </button> */}
+            {micEnabled ? (
+              <Mic className="w-4 h-4" />
+            ) : (
+              <MicOff className="w-4 h-4" />
+            )}
+          </button>
         </div>
       </div>
     </div>
