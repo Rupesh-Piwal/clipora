@@ -8,8 +8,6 @@ import {
   VideoOff,
   RotateCcw,
   Pause,
-  Trash2,
-  Pen,
   Monitor,
   MonitorOff,
 } from "lucide-react";
@@ -17,13 +15,13 @@ import { cn } from "@/lib/utils";
 
 interface ControlBarProps {
   status:
-  | "idle"
-  | "dest"
-  | "initializing"
-  | "recording"
-  | "stopping"
-  | "completed"
-  | "error";
+    | "idle"
+    | "dest"
+    | "initializing"
+    | "recording"
+    | "stopping"
+    | "completed"
+    | "error";
   onStartRecording: () => void;
   onStopRecording: () => void;
   webcamEnabled: boolean;
@@ -67,33 +65,22 @@ export function ControlBar({
 
   if (status === "idle") {
     return (
-      <div className="flex items-center justify-center gap-8 pb-10">
+      <div className="flex items-center justify-center gap-8 bg-[#1b1b1b] p-1">
         {/* Record/Start Button - DISABLED when no media source */}
         <div className="flex flex-col items-center gap-2">
           <button
             onClick={onStartRecording}
             disabled={!canRecord}
             className={cn(
-              "rounded-[14px] flex items-center justify-center gap-2 transition-all duration-200 shadow-lg group px-7 py-3",
+              "rounded-lg flex items-center justify-center gap-2 transition-all duration-200 shadow-lg group px-4 py-1",
               canRecord
                 ? "bg-[#f84d4d] hover:bg-[#ff5f5f] text-white cursor-pointer"
-                : "bg-[#f84d4d]/30 text-white/40 cursor-not-allowed"
+                : "bg-[#f84d4d]/30 text-white/40 cursor-not-allowed",
             )}
           >
-            <div className={cn(
-              "w-5 h-5 rounded-full flex items-center justify-center",
-              canRecord ? "bg-white" : "bg-white/30"
-            )}>
-              <div className={cn(
-                "w-2.5 h-2.5 rounded-full transition-transform",
-                canRecord
-                  ? "bg-[#f84d4d] group-hover:scale-90"
-                  : "bg-[#f84d4d]/50"
-              )} />
-            </div>
             <span className="text-lg font-semibold tracking-tight">Record</span>
           </button>
-          <span className="text-sm font-medium text-gray-400">
+          <span className="text-[12px] font-medium text-gray-400">
             {canRecord ? "Start" : "Enable source"}
           </span>
         </div>
@@ -115,7 +102,7 @@ export function ControlBar({
               <MonitorOff className="w-5 h-5 opacity-40" />
             )}
           </button>
-          <span className="text-sm font-medium text-gray-400">Screen</span>
+          <span className="text-[12px] font-medium text-slate-400">Screen</span>
         </div>
 
         {/* Mic Toggle */}
@@ -135,7 +122,7 @@ export function ControlBar({
               <MicOff className="w-5 h-5 opacity-40" />
             )}
           </button>
-          <span className="text-sm font-medium text-gray-400">Mic</span>
+          <span className="text-[12px] font-medium text-slate-400">Mic</span>
         </div>
 
         {/* Cam Toggle */}
@@ -155,7 +142,7 @@ export function ControlBar({
               <VideoOff className="w-5 h-5 opacity-40" />
             )}
           </button>
-          <span className="text-sm font-medium text-gray-400">Cam</span>
+          <span className="text-[12px] font-medium text-slate-400">Cam</span>
         </div>
       </div>
     );

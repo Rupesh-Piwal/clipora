@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { usePiPRecording } from "@/lib/hooks/usePiPRecording";
 import {
   requestPresignedUrl,
@@ -39,6 +39,9 @@ export default function RecordingInterface() {
     micEnabled,
     toggleCamera,
     toggleMic,
+    toggleScreenShare,
+    permissionError,
+    permissionErrorType,
   } = usePiPRecording();
 
   // Review / Upload State
@@ -128,7 +131,6 @@ export default function RecordingInterface() {
           recordingDuration={recordingDuration}
           MAX_RECORDING_DURATION={MAX_RECORDING_DURATION}
           canvasDimensions={canvasDimensions}
-          setWebcamConfig={setWebcamConfig}
           onStartRecording={handleStartRecording}
           onStopRecording={handleStopRecording}
           onToggleWebcam={() => toggleCamera(!cameraEnabled)}
@@ -136,10 +138,12 @@ export default function RecordingInterface() {
           onToggleMic={() => toggleMic(!micEnabled)}
           permissions={permissions}
           onRequestCameraMic={requestCameraAndMic}
-          onRequestScreen={requestScreenShare}
+          onRequestScreen={toggleScreenShare}
           webcamPreviewStream={webcamPreviewStream}
           screenPreviewStream={screenPreviewStream}
           canRecord={canRecord}
+          permissionError={permissionError}
+          permissionErrorType={permissionErrorType}
         />
       </main>
     );
@@ -169,6 +173,8 @@ export default function RecordingInterface() {
       </main>
     );
   }
+
+
 
   // 4. ERROR STATE
   if (status === "error") {

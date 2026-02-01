@@ -13,22 +13,25 @@ import { RecordingStateMachine } from "../recording-state-machine";
 const CANVAS_WIDTH = 1920;
 const CANVAS_HEIGHT = 1080;
 const FRAME_RATE = 60;
-const WEBCAM_WIDTH = 320;
-const PADDING = 20;
 const MAX_RECORDING_DURATION = 120; // 2 minutes strict limit
 
-export interface WebcamConfig {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
+// Split Screen Constants
+const SPLIT_SCREEN_WIDTH = 1280; // 2/3 of 1920
+const SPLIT_WEBCAM_WIDTH = 640;  // 1/3 of 1920
 
 export interface PermissionState {
     camera: boolean;
     mic: boolean;
     screen: boolean;
 }
+
+export type PermissionErrorType =
+    | 'PERMISSION_BLOCKED'
+    | 'DEVICE_BUSY'
+    | 'NO_DEVICE'
+    | 'HTTPS_REQUIRED'
+    | 'UNKNOWN'
+    | null;
 
 export const usePiPRecording = () => {
     // =============================================
@@ -56,8 +59,10 @@ export const usePiPRecording = () => {
     });
 
     // UI toggle state - tracks what user wants enabled (separate from permissions)
-    const [cameraEnabled, setCameraEnabled] = useState(true);
-    const [micEnabled, setMicEnabled] = useState(true);
+    const [cameraEnabled, setCameraEnabled] = useState(false);
+    const [micEnabled, setMicEnabled] = useState(false);
+    const [permissionError, setPermissionError] = useState<string | null>(null);
+    const [permissionErrorType, setPermissionErrorType] = useState<PermissionErrorType>(null);
 
     // Preview streams for UI display
     const [webcamPreviewStream, setWebcamPreviewStream] = useState<MediaStream | null>(null);
@@ -86,12 +91,12 @@ export const usePiPRecording = () => {
     const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
 
     // Webcam Config
-    const webcamConfigRef = useRef<WebcamConfig>({
-        x: CANVAS_WIDTH - WEBCAM_WIDTH - PADDING,
-        y: CANVAS_HEIGHT - WEBCAM_WIDTH - PADDING,
-        width: WEBCAM_WIDTH,
-        height: WEBCAM_WIDTH
-    });
+    // const webcamConfigRef = useRef<WebcamConfig>({
+    //     x: CANVAS_WIDTH - WEBCAM_WIDTH - PADDING,
+    //     y: CANVAS_HEIGHT - WEBCAM_WIDTH - PADDING,
+    //     width: WEBCAM_WIDTH,
+    //     height: WEBCAM_WIDTH
+    // });
 
     // =============================================
     // 3. DERIVED STATE
@@ -121,8 +126,9 @@ export const usePiPRecording = () => {
         return () => unsubscribe();
     }, [updateState]);
 
-    const setWebcamConfig = useCallback((config: Partial<WebcamConfig>) => {
-        webcamConfigRef.current = { ...webcamConfigRef.current, ...config };
+    const setWebcamConfig = useCallback(() => {
+        // No-op: Config is now fixed to split screen
+        console.warn("setWebcamConfig is deprecated. Layout is fixed.");
     }, []);
 
     // =============================================
@@ -134,15 +140,74 @@ export const usePiPRecording = () => {
      * This is the PRIMARY entry point for the permission gate.
      * On success: stores streams, updates permissions, shows webcam preview.
      */
+    /**
+     * Request camera and microphone permissions.
+     * This is the PRIMARY entry point for the permission gate.
+     * On success: stores streams, updates permissions, shows webcam preview.
+     */
     const requestCameraAndMic = useCallback(async () => {
         console.log("[Permissions] Requesting Camera & Microphone...");
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { width: 1280, height: 720 },
-                audio: true,
-            });
+        setPermissionError(null);
+        setPermissionErrorType(null);
 
-            console.log("[Permissions] Camera & Mic Granted");
+        // 1. HTTPS Check
+        if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost') {
+            setPermissionErrorType('HTTPS_REQUIRED');
+            setPermissionError("Camera access requires a secure HTTPS connection.");
+            return;
+        }
+
+        try {
+            // Default constraints
+            const constraints = {
+                video: true,
+                audio: true,
+            };
+
+            // 2. Check Permission State & Refine Constraints
+            if (navigator.permissions && navigator.permissions.query) {
+                try {
+                    const camState = await navigator.permissions.query({ name: 'camera' as PermissionName });
+                    const micState = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+
+                    // If both blocked, stop immediately
+                    if (camState.state === 'denied' && micState.state === 'denied') {
+                        console.warn("[Permissions] Explicitly blocked by user.");
+                        setPermissionErrorType('PERMISSION_BLOCKED');
+                        setPermissionError("Camera and microphone are blocked. Please enable them from browser site settings.");
+                        return;
+                    }
+
+                    // Smart Constraints: Don't ask for what is already denied
+                    if (camState.state === 'denied') {
+                        console.warn("[Permissions] Camera blocked, requesting Mic only");
+                        constraints.video = false;
+                    }
+                    if (micState.state === 'denied') {
+                        console.warn("[Permissions] Mic blocked, requesting Camera only");
+                        constraints.audio = false;
+                    }
+
+                } catch (e) {
+                    console.warn("[Permissions] navigator.permissions.query not fully supported, proceeding with default constraints.");
+                }
+            }
+
+            // 3. Stop previous streams
+            if (webcamStreamRef.current) {
+                webcamStreamRef.current.getTracks().forEach(t => t.stop());
+                webcamStreamRef.current = null;
+            }
+            if (microphoneStreamRef.current) {
+                microphoneStreamRef.current.getTracks().forEach(t => t.stop());
+                microphoneStreamRef.current = null;
+            }
+
+            // 4. Call getUserMedia with Smart Constraints
+            // This ensures the picker appears for the 'prompt' device even if the other is blocked.
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+            console.log("[Permissions] Access Granted", constraints);
             stream.getTracks().forEach(t => console.log(`[Track] ${t.kind}: readyState=${t.readyState}`));
 
             const videoTrack = stream.getVideoTracks()[0];
@@ -150,28 +215,18 @@ export const usePiPRecording = () => {
 
             // Store webcam stream
             if (videoTrack) {
-                if (webcamStreamRef.current) {
-                    webcamStreamRef.current.getTracks().forEach(t => t.stop());
-                }
                 webcamStreamRef.current = new MediaStream([videoTrack]);
-
-                // Create video element for canvas drawing
                 const wVideo = document.createElement("video");
                 wVideo.srcObject = webcamStreamRef.current;
                 wVideo.muted = true;
                 wVideo.playsInline = true;
                 await wVideo.play();
                 webcamVideoRef.current = wVideo;
-
-                // Set preview stream for UI
                 setWebcamPreviewStream(webcamStreamRef.current);
             }
 
             // Store microphone stream
             if (audioTrack) {
-                if (microphoneStreamRef.current) {
-                    microphoneStreamRef.current.getTracks().forEach(t => t.stop());
-                }
                 microphoneStreamRef.current = new MediaStream([audioTrack]);
             }
 
@@ -182,33 +237,57 @@ export const usePiPRecording = () => {
                 mic: !!audioTrack
             }));
 
-            // Enable toggles by default
-            setCameraEnabled(true);
-            setMicEnabled(true);
+            // Warn if partial success
+            if (!videoTrack && constraints.video) {
+                // Requested but didn't get? (Should imply specific track error, effectively meaningless here as getUserMedia throws)
+            }
+            if (!videoTrack && !constraints.video) {
+                // We intentionally skipped video
+                if (constraints.audio && audioTrack) {
+                    // We got audio only
+                    setPermissionError("Camera is blocked. Recording with Microphone only.");
+                }
+            }
+            if (!audioTrack && !constraints.audio) {
+                // We intentionally skipped audio
+                if (constraints.video && videoTrack) {
+                    // We got video only
+                    setPermissionError("Microphone is blocked. Recording with Camera only.");
+                }
+            }
+
+            // Default to OFF as requested
+            setCameraEnabled(false);
+            setMicEnabled(false);
+
+            // Ensure tracks start disabled
+            if (videoTrack) videoTrack.enabled = false;
+            if (audioTrack) audioTrack.enabled = false;
 
         } catch (error: any) {
             console.error("[Permissions] Camera/Mic Error:", error);
 
-            // Fallback: Try audio only if camera not found
-            if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
-                console.log("[Permissions] Camera not found, trying Microphone only...");
-                try {
-                    const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    const audioTrack = audioStream.getAudioTracks()[0];
-
-                    if (audioTrack) {
-                        microphoneStreamRef.current = new MediaStream([audioTrack]);
-                        setPermissions(prev => ({ ...prev, mic: true }));
-                        setMicEnabled(true);
-                    }
-                } catch (err2) {
-                    console.error("[Permissions] Mic-only failed:", err2);
-                }
+            // 5. Error Mapping
+            if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+                setPermissionErrorType('PERMISSION_BLOCKED');
+                setPermissionError("Permission denied. check your system/browser permission settings.");
+            } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+                setPermissionErrorType('NO_DEVICE');
+                setPermissionError("No camera or microphone found.");
+            } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
+                setPermissionErrorType('DEVICE_BUSY');
+                setPermissionError("Camera or microphone is checking/busy. Close other apps using them.");
+            } else {
+                setPermissionErrorType('UNKNOWN');
+                setPermissionError(error.message || "Failed to access camera/microphone.");
             }
-            // Other errors (NotAllowedError, etc.) - permission denied, handle gracefully
         }
     }, []);
 
+    /**
+     * Request screen share permission.
+     * CRITICAL: Does NOT switch browser tabs.
+     */
     /**
      * Request screen share permission.
      * CRITICAL: Does NOT switch browser tabs.
@@ -235,10 +314,12 @@ export const usePiPRecording = () => {
             // Handle user clicking "Stop Sharing" in browser UI
             const videoTrack = displayStream.getVideoTracks()[0];
             if (videoTrack) {
-                videoTrack.onended = () => {
+                videoTrack.addEventListener('ended', () => {
                     console.log("[Lifecycle] Screen share stopped by user via browser UI");
+                    // Specific requirement: Update state null
+                    setScreenPreviewStream(null);
                     stopScreenShare();
-                };
+                });
             }
 
             // Create video element for canvas drawing
@@ -281,6 +362,17 @@ export const usePiPRecording = () => {
             performStop();
         }
     }, []);
+
+    /**
+     * Toggle Screen Share: Request if inactive, Stop if active.
+     */
+    const toggleScreenShare = useCallback(async () => {
+        if (permissions.screen && screenStreamRef.current) {
+            stopScreenShare();
+        } else {
+            await requestScreenShare();
+        }
+    }, [permissions.screen, requestScreenShare, stopScreenShare]);
 
     /**
      * Toggle camera on/off (after permission is granted).
@@ -331,70 +423,99 @@ export const usePiPRecording = () => {
 
         ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-        // Draw screen capture (if available)
-        if (screenVideo && screenVideo.readyState >= 2) {
-            ctx.drawImage(screenVideo, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-        } else {
-            // No screen capture - fill with dark background
-            ctx.fillStyle = "#1a1a1a";
-            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-        }
+        // --- BACKGROUND ---
+        ctx.fillStyle = "#000000"; // Black background
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-        // Draw webcam overlay (if enabled and available)
-        if (webcamVideo && webcamVideo.readyState === 4 && webcamStreamRef.current && cameraEnabled) {
-            const { x, y, width, height } = webcamConfigRef.current;
-            const size = Math.min(width, height);
-            const radius = size / 2;
-            const cx = x + radius;
-            const cy = y + radius;
+        const isCamActive = webcamVideo && webcamVideo.readyState === 4 && webcamStreamRef.current && cameraEnabled;
+        const isScreenActive = screenVideo && screenVideo.readyState >= 2;
 
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-            ctx.closePath();
+        // --- LAYOUT LOGIC ---
+        // 1. If Camera is Active: Split View (Left 2/3 Screen, Right 1/3 Camera)
+        // 2. If Camera Not Active: Full View (Full Screen)
 
-            // Shadow
-            ctx.shadowColor = "rgba(0,0,0,0.5)";
-            ctx.shadowBlur = 15;
-            ctx.shadowOffsetY = 4;
-            ctx.fillStyle = "rgba(0,0,0,0.3)";
-            ctx.fill();
+        if (isCamActive) {
+            // == RIGHT SIDE: WEBCAM ==
+            // Draw into the 640x1080 strip on the right
+            const camX = SPLIT_SCREEN_WIDTH; // 1280
+            const camY = 0;
+            const camW = SPLIT_WEBCAM_WIDTH; // 640
+            const camH = CANVAS_HEIGHT;      // 1080
 
-            // Reset Shadow
-            ctx.shadowColor = "transparent";
-            ctx.shadowBlur = 0;
-            ctx.shadowOffsetY = 0;
+            // Aspect Fill for user experience (like a vertical video)
+            const videoW = webcamVideo.videoWidth;
+            const videoH = webcamVideo.videoHeight;
+            const videoAspect = videoW / videoH;
+            const destAspect = camW / camH;
 
-            ctx.clip();
-
-            // Draw Video (Cover crop to circle)
-            const vw = webcamVideo.videoWidth;
-            const vh = webcamVideo.videoHeight;
-            const videoAspect = vw / vh;
-            const destAspect = 1;
-
-            let sx = 0, sy = 0, sw = vw, sh = vh;
+            let sx = 0, sy = 0, sw = videoW, sh = videoH;
 
             if (videoAspect > destAspect) {
-                sw = vh * destAspect;
-                sx = (vw - sw) / 2;
+                // Video is wider than slot: crop sides
+                sw = videoH * destAspect;
+                sx = (videoW - sw) / 2;
             } else {
-                sh = vw / destAspect;
-                sy = (vh - sh) / 2;
+                // Video is taller than slot: crop top/bottom
+                sh = videoW / destAspect;
+                sy = (videoH - sh) / 2;
             }
 
-            ctx.drawImage(webcamVideo, sx, sy, sw, sh, x, y, size, size);
-            ctx.restore();
+            ctx.drawImage(webcamVideo, sx, sy, sw, sh, camX, camY, camW, camH);
 
-            // Border
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-            ctx.closePath();
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = "white";
-            ctx.stroke();
-            ctx.restore();
+            // == LEFT SIDE: SCREEN ==
+            if (isScreenActive) {
+                // Draw into the 1280x1080 area on the left
+                // Aspect Fit to ensure entire screen is visible
+                const screenX = 0;
+                const screenY = 0;
+                const screenW = SPLIT_SCREEN_WIDTH;
+                const screenH = CANVAS_HEIGHT;
+
+                const sVideoW = screenVideo.videoWidth;
+                const sVideoH = screenVideo.videoHeight;
+                const sAspect = sVideoW / sVideoH;
+                const dAspect = screenW / screenH;
+
+                let drawW = screenW;
+                let drawH = screenH;
+                let drawX = screenX;
+                let drawY = screenY;
+
+                if (sAspect > dAspect) {
+                    // Screen is wider: match width, center vertically
+                    drawH = screenW / sAspect;
+                    drawY = screenY + (screenH - drawH) / 2;
+                } else {
+                    // Screen is taller: match height, center horizontally
+                    drawW = screenH * sAspect;
+                    drawX = screenX + (screenW - drawW) / 2;
+                }
+                ctx.drawImage(screenVideo, 0, 0, sVideoW, sVideoH, drawX, drawY, drawW, drawH);
+            }
+
+        } else {
+            // == FULL SCREEN MODE (No Camera) ==
+            if (isScreenActive) {
+                // Draw Full Canvas 1920x1080 - Aspect Fit
+                const sVideoW = screenVideo.videoWidth;
+                const sVideoH = screenVideo.videoHeight;
+                const sAspect = sVideoW / sVideoH;
+                const dAspect = CANVAS_WIDTH / CANVAS_HEIGHT;
+
+                let drawW = CANVAS_WIDTH;
+                let drawH = CANVAS_HEIGHT;
+                let drawX = 0;
+                let drawY = 0;
+
+                if (sAspect > dAspect) {
+                    drawH = CANVAS_WIDTH / sAspect;
+                    drawY = (CANVAS_HEIGHT - drawH) / 2;
+                } else {
+                    drawW = CANVAS_HEIGHT * sAspect;
+                    drawX = (CANVAS_WIDTH - drawW) / 2;
+                }
+                ctx.drawImage(screenVideo, 0, 0, sVideoW, sVideoH, drawX, drawY, drawW, drawH);
+            }
         }
 
         animationFrameRef.current = requestAnimationFrame(drawFrame);
@@ -552,7 +673,7 @@ export const usePiPRecording = () => {
                     }
                 }
             } else if (micEnabled) {
-                 // No screen sharing, just mic
+                // No screen sharing, just mic
                 microphoneStreamRef.current?.getAudioTracks().forEach(t => finalStream.addTrack(t));
             }
 
@@ -727,7 +848,8 @@ export const usePiPRecording = () => {
 
         // Permission actions
         requestCameraAndMic,
-        requestScreenShare,
+        requestScreenShare, // Raw request if needed
+        toggleScreenShare,  // Smart toggle
         stopScreenShare,
 
         // Toggle actions
@@ -739,5 +861,7 @@ export const usePiPRecording = () => {
         setWebcamConfig,
         canvasDimensions: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
         MAX_RECORDING_DURATION,
+        permissionError,
+        permissionErrorType,
     };
 };
