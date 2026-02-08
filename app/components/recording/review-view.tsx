@@ -12,12 +12,17 @@ import {
   AlertCircle,
   CheckCircle,
   RotateCcw,
+  ImageIcon,
+  PaintBucket
 } from "lucide-react";
 import { formatTime } from "./utils";
 import { LayoutSelector } from "./layout-selector";
 import { PostProcessor, PostProcessorRef } from "./post-processor";
 import { LayoutId } from "@/lib/layouts/layout-engine";
 import { RecordedState } from "@/lib/hooks/usePiPRecording";
+import { BACKGROUND_IMAGES, BACKGROUND_GRADIENTS, NO_BACKGROUND, BackgroundOption } from "@/lib/backgrounds";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 type ReviewState = "review" | "uploading" | "success" | "error";
 
@@ -63,6 +68,9 @@ export function ReviewView({
   const [layoutId, setLayoutId] = useState<LayoutId>("screen-camera-br");
   const postProcessorRef = useRef<PostProcessorRef>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Background State
+  const [selectedBackground, setSelectedBackground] = useState<BackgroundOption>(NO_BACKGROUND);
 
   // Default to screen-only if no camera, or camera-only if no screen?
   // We can auto-detect in useEffect
@@ -133,6 +141,7 @@ export function ReviewView({
               screenBlob={recordedSources.screen}
               cameraBlob={recordedSources.camera}
               initialLayout={layoutId}
+              background={selectedBackground}
               onExportStart={() => {/* Handled in local state if needed */ }}
               onExportProgress={(p) => {/* Optional: Show progress bar overlay */ }}
               onExportComplete={handleExportComplete}
@@ -177,6 +186,100 @@ export function ReviewView({
                   onSelect={setLayoutId}
                   disabled={isProcessing}
                 />
+              </div>
+
+              <div className="h-px bg-white/10" />
+
+              {/* Background Selector */}
+              <div>
+                <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-purple-500 rounded-full" />
+                  Background
+                </h3>
+
+                <Tabs defaultValue="image" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 bg-[#0a0a0a] border border-white/10 mb-4 p-1 h-auto">
+                    <TabsTrigger value="image" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/60 py-2">
+                      <ImageIcon className="w-3 h-3 mr-2" /> Images
+                    </TabsTrigger>
+                    <TabsTrigger value="gradient" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/60 py-2">
+                      <PaintBucket className="w-3 h-3 mr-2" /> Gradients
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* None Option - Always available */}
+                  <button
+                    onClick={() => setSelectedBackground(NO_BACKGROUND)}
+                    className={cn(
+                      "w-full flex items-center gap-3 p-2 rounded-lg border mb-4 transition-all",
+                      selectedBackground.id === "none"
+                        ? "bg-white/10 border-indigo-500/50"
+                        : "bg-[#0a0a0a] border-white/10 hover:border-white/20"
+                    )}
+                  >
+                    <div className="w-8 h-8 rounded bg-black border border-white/10 flex items-center justify-center">
+                      <span className="text-white/40 text-[10px]">None</span>
+                    </div>
+                    <span className="text-sm text-white/80">No Background</span>
+                  </button>
+
+                  <TabsContent value="image" className="mt-0">
+                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                      {BACKGROUND_IMAGES.map((bg) => (
+                        <button
+                          key={bg.id}
+                          onClick={() => setSelectedBackground(bg)}
+                          className={cn(
+                            "relative group aspect-video rounded-lg overflow-hidden border transition-all",
+                            selectedBackground.id === bg.id
+                              ? "border-indigo-500 ring-2 ring-indigo-500/20"
+                              : "border-white/10 hover:border-white/30"
+                          )}
+                        >
+                          <img
+                            src={bg.preview}
+                            alt={bg.label}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                          {selectedBackground.id === bg.id && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                              <CheckCircle className="w-5 h-5 text-white drop-shadow-md" />
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="gradient" className="mt-0">
+                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                      {BACKGROUND_GRADIENTS.map((bg) => (
+                        <button
+                          key={bg.id}
+                          onClick={() => setSelectedBackground(bg)}
+                          className={cn(
+                            "relative group aspect-video rounded-lg overflow-hidden border transition-all",
+                            selectedBackground.id === bg.id
+                              ? "border-indigo-500 ring-2 ring-indigo-500/20"
+                              : "border-white/10 hover:border-white/30"
+                          )}
+                        >
+                          <div
+                            className="w-full h-full"
+                            style={{ background: bg.preview }}
+                          />
+                          {selectedBackground.id === bg.id && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                              <CheckCircle className="w-5 h-5 text-white drop-shadow-md" />
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
 
               <div className="h-px bg-white/10" />

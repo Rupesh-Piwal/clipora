@@ -1,5 +1,6 @@
 import { ComponentType } from "react";
 import { Monitor, Video, LayoutTemplate, Square, PictureInPicture, Grid2X2, RectangleHorizontal } from "lucide-react";
+import { BackgroundOption } from "../backgrounds";
 
 export type LayoutId =
     | "screen-camera-br"
@@ -19,9 +20,82 @@ export interface LayoutMode {
         screenVideo: HTMLVideoElement | null,
         cameraVideo: HTMLVideoElement | null,
         width: number,
-        height: number
+        height: number,
+        background?: BackgroundOption | HTMLImageElement // Option metadata OR preloaded image element
     ) => void;
 }
+
+// Helper: Draw Background
+const drawBackground = (
+    ctx: CanvasRenderingContext2D,
+    w: number,
+    h: number,
+    bg?: BackgroundOption | HTMLImageElement
+) => {
+    // 1. Default to black
+    if (!bg) {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, w, h);
+        return;
+    }
+
+    // 2. Handle HTMLImageElement (Preloaded) - logic from post-processor
+    if (bg instanceof HTMLImageElement) {
+        // Draw cover
+        const aspect = w / h;
+        const imgAspect = bg.naturalWidth / bg.naturalHeight;
+        let sx = 0, sy = 0, sw = bg.naturalWidth, sh = bg.naturalHeight;
+
+        if (imgAspect > aspect) {
+            sw = bg.naturalHeight * aspect;
+            sx = (bg.naturalWidth - sw) / 2;
+        } else {
+            sh = bg.naturalWidth / aspect;
+            sy = (bg.naturalHeight - sh) / 2;
+        }
+        ctx.drawImage(bg, sx, sy, sw, sh, 0, 0, w, h);
+        return;
+
+    }
+
+    // 3. Handle BackgroundOption
+    if (bg.type === "none") {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, w, h);
+        return;
+    }
+
+    if (bg.type === "gradient") {
+        // Parse gradient string roughly or use a fixed implementation for the known presets?
+        // Presets are simplistic linear-gradients.
+        // Value format: "linear-gradient(135deg, #color1 0%, #color2 100%)"
+        // Canvas gradients are x1,y1,x2,y2. 
+        // Mapping CSS angles to Canvas coords is non-trivial for general cases.
+        // For this specific feature with known presets, we can approximate or use a simple vertical/diagonal.
+        // Let's implement a robust enough parser for the 10 presets (mostly 135deg or vertical).
+
+        const gradient = ctx.createLinearGradient(0, 0, w, h); // Default diagonal top-left to bottom-right
+        // Simple parsing for the predefined constants
+        // Regex to find colors
+        const colors = bg.value.match(/#[a-fA-F0-9]{6}/g);
+        if (colors && colors.length >= 2) {
+            gradient.addColorStop(0, colors[0]);
+            gradient.addColorStop(1, colors[1]);
+        } else {
+            // Fallback
+            gradient.addColorStop(0, "#333");
+            gradient.addColorStop(1, "#000");
+        }
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, w, h);
+        return;
+    }
+
+    // If type image but passed as option (not loaded element) => can't draw immediately.
+    // Should fallback to black, caller must preload.
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, w, h);
+};
 
 // Helper: Draw video keeping aspect ratio to cover or contain
 const drawVideo = (
@@ -74,11 +148,8 @@ const drawVideo = (
 // RENDER FUNCTIONS
 // ==========================================
 
-const renderScreenCameraBR: LayoutMode["render"] = (ctx, screen, camera, w, h) => {
-    // 1. Draw Screen (Background) - Contain/Cover? Usually Screen recording is "contain" with black bars if mismatched, or fill. 
-    // Codebase usually treats screen as full canvas. let's use contain for safety to not crop controls.
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, w, h);
+const renderScreenCameraBR: LayoutMode["render"] = (ctx, screen, camera, w, h, bg) => {
+    drawBackground(ctx, w, h, bg);
 
     if (screen) drawVideo(ctx, screen, 0, 0, w, h, "contain");
 
@@ -89,10 +160,6 @@ const renderScreenCameraBR: LayoutMode["render"] = (ctx, screen, camera, w, h) =
         const padding = 32; // 16px padding requested, but 32 looks better on 1080p usually. Request said 16px.
         const x = w - camW - 16;
         const y = h - camH - 16;
-
-        // Circle mask or rect? Request implies rect/overlay. Let's stick to rect for now as per "Camera width: 20%".
-        // Usually circular bubbles are popular but spec didn't strictly say circle. Image shows circle in some, rect in others?
-        // "Camera overlay at bottom-right". Let's do rounded rect.
 
         ctx.save();
         // Rounded rect clip
@@ -109,9 +176,9 @@ const renderScreenCameraBR: LayoutMode["render"] = (ctx, screen, camera, w, h) =
     }
 };
 
-const renderScreenCameraBL: LayoutMode["render"] = (ctx, screen, camera, w, h) => {
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, w, h);
+const renderScreenCameraBL: LayoutMode["render"] = (ctx, screen, camera, w, h, bg) => {
+    drawBackground(ctx, w, h, bg);
+
     if (screen) drawVideo(ctx, screen, 0, 0, w, h, "contain");
 
     if (camera) {
@@ -129,9 +196,8 @@ const renderScreenCameraBL: LayoutMode["render"] = (ctx, screen, camera, w, h) =
     }
 };
 
-const renderScreenCameraSideLeft: LayoutMode["render"] = (ctx, screen, camera, w, h) => {
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, w, h);
+const renderScreenCameraSideLeft: LayoutMode["render"] = (ctx, screen, camera, w, h, bg) => {
+    drawBackground(ctx, w, h, bg);
 
     const camW = w * 0.3; // 30% width
     const screenW = w - camW;
@@ -148,9 +214,8 @@ const renderScreenCameraSideLeft: LayoutMode["render"] = (ctx, screen, camera, w
     }
 };
 
-const renderScreenCameraSideRight: LayoutMode["render"] = (ctx, screen, camera, w, h) => {
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, w, h);
+const renderScreenCameraSideRight: LayoutMode["render"] = (ctx, screen, camera, w, h, bg) => {
+    drawBackground(ctx, w, h, bg);
 
     const camW = w * 0.3;
     const screenW = w - camW;
@@ -166,9 +231,8 @@ const renderScreenCameraSideRight: LayoutMode["render"] = (ctx, screen, camera, 
     }
 };
 
-const renderCameraOnlyCenter: LayoutMode["render"] = (ctx, screen, camera, w, h) => {
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, w, h);
+const renderCameraOnlyCenter: LayoutMode["render"] = (ctx, screen, camera, w, h, bg) => {
+    drawBackground(ctx, w, h, bg);
     if (camera) {
         // "Camera fills most of the frame" - maybe 80% size? or just contain with black bars?
         // "Maintain aspect ratio"
@@ -176,18 +240,18 @@ const renderCameraOnlyCenter: LayoutMode["render"] = (ctx, screen, camera, w, h)
     }
 };
 
-const renderCameraOnlyFull: LayoutMode["render"] = (ctx, screen, camera, w, h) => {
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, w, h);
+const renderCameraOnlyFull: LayoutMode["render"] = (ctx, screen, camera, w, h, bg) => {
+    // If full screen camera, background is hidden anyway unless camera transparent (unlikely)
+    // But good practice to draw it.
+    drawBackground(ctx, w, h, bg);
     if (camera) {
         // "Fill entire frame" -> cover
         drawVideo(ctx, camera, 0, 0, w, h, "cover");
     }
 };
 
-const renderScreenOnly: LayoutMode["render"] = (ctx, screen, camera, w, h) => {
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, w, h);
+const renderScreenOnly: LayoutMode["render"] = (ctx, screen, camera, w, h, bg) => {
+    drawBackground(ctx, w, h, bg);
     if (screen) {
         drawVideo(ctx, screen, 0, 0, w, h, "contain");
     }

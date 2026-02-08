@@ -6,6 +6,7 @@ import { LayoutId, getLayout } from "@/lib/layouts/layout-engine";
 import { Play, Pause, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatTime } from "./utils"; // Assuming utils exists in same folder or I need to import from parent
+import { BackgroundOption } from "@/lib/backgrounds";
 
 // Mock Slider if simple-ui not available, but let's assume shadcn/ui slider is there or basic input range
 // "UI Toggle state... Reuse existing card / button components if possible"
@@ -21,6 +22,7 @@ interface PostProcessorProps {
     // So we should handle both being present or one.
 
     initialLayout: LayoutId;
+    background: BackgroundOption; // NEW: Background selection
     onExportStart: () => void;
     onExportProgress: (progress: number) => void;
     onExportComplete: (url: string, blob: Blob) => void;
@@ -35,6 +37,7 @@ export const PostProcessor = forwardRef<PostProcessorRef, PostProcessorProps>(({
     screenBlob,
     cameraBlob,
     initialLayout,
+    background,
     onExportStart,
     onExportProgress,
     onExportComplete,
@@ -54,6 +57,20 @@ export const PostProcessor = forwardRef<PostProcessorRef, PostProcessorProps>(({
     // Create object URLs on mount, revoke on unmount
     const [screenUrl, setScreenUrl] = useState<string | null>(null);
     const [cameraUrl, setCameraUrl] = useState<string | null>(null);
+
+    // Background Image Loading
+    const [backgroundImage, setBackgroundImage] = useState<HTMLImageElement | null>(null);
+
+    useEffect(() => {
+        if (background.type === "image") {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.src = background.value;
+            img.onload = () => setBackgroundImage(img);
+        } else {
+            setBackgroundImage(null);
+        }
+    }, [background]);
 
     useEffect(() => {
         if (screenBlob) {
@@ -100,9 +117,10 @@ export const PostProcessor = forwardRef<PostProcessorRef, PostProcessorProps>(({
             screenVideoRef.current,
             cameraVideoRef.current,
             canvas.width,
-            canvas.height
+            canvas.height,
+            backgroundImage || background
         );
-    }, [layoutId]);
+    }, [layoutId, background, backgroundImage]);
 
     // Loop
     useEffect(() => {
