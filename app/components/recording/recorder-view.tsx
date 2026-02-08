@@ -8,12 +8,12 @@ import Clip from "./clip";
 
 interface RecorderViewProps {
   status:
-  | "idle"
-  | "recording"
-  | "initializing"
-  | "stopping"
-  | "completed"
-  | "error";
+    | "idle"
+    | "recording"
+    | "initializing"
+    | "stopping"
+    | "completed"
+    | "error";
   webcamEnabled: boolean;
   previewStream: MediaStream | null;
   recordingDuration: number;
@@ -122,9 +122,9 @@ export function RecorderView({
   // MAIN RECORDING VIEW
   // =============================================
   return (
-    <div className="flex flex-col text-white overflow-hidden min-h-screen bg-[#0a0a0a]">
+    <div className="flex flex-col text-white overflow-hidden min-h-screen bg-[#0E0E10]">
       {/* VIDEO AREA */}
-      <div className="flex-1 flex items-center justify-center relative mb-1.5 bg-[#1c1c1c]">
+      <div className="flex-1 flex items-center justify-center relative m-2 rounded-lg bg-[#1A1B1D] border border-[#2E2E30]">
         {/* Permission Gate or Main Video Area */}
         {!hasAnyPermission && status === "idle" ? (
           // =============================================
@@ -160,7 +160,7 @@ export function RecorderView({
               // INITIAL PERMISSION STATE
               <>
                 <div className="text-center space-y-3">
-                  <div className="w-20 h-20 mx-auto bg-linear-to-br from-purple-500/20 to-blue-500/20 rounded-full flex items-center justify-center mb-6 ring-1 ring-white/10">
+                  <div className="w-20 h-20 mx-auto bg-[#1c1c1c] rounded-full flex items-center justify-center mb-6 ring-1 ring-white/10">
                     <Camera className="w-10 h-10 text-white/60" />
                   </div>
                   <h2 className="text-3xl font-bold bg-linear-to-b from-white to-white/60 bg-clip-text text-transparent">
@@ -320,9 +320,9 @@ export function RecorderView({
         micEnabled={micEnabled}
         onToggleMic={onToggleMic}
         recordingDuration={recordingDuration}
-        onReset={() => { }}
-        onPause={() => { }}
-        onDelete={() => { }}
+        onReset={() => {}}
+        onPause={() => {}}
+        onDelete={() => {}}
         screenShareEnabled={permissions.screen}
         onToggleScreenShare={onRequestScreen}
         canRecord={canRecord}

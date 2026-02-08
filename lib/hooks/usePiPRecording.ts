@@ -19,6 +19,12 @@ const MAX_RECORDING_DURATION = 120; // 2 minutes strict limit
 const SPLIT_SCREEN_WIDTH = 1280; // 2/3 of 1920
 const SPLIT_WEBCAM_WIDTH = 640;  // 1/3 of 1920
 
+export interface RecordedState {
+    screen: Blob | null;
+    camera: Blob | null;
+    duration: number;
+}
+
 export interface PermissionState {
     camera: boolean;
     mic: boolean;
@@ -58,9 +64,19 @@ export const usePiPRecording = () => {
         screen: false,
     });
 
-    // UI toggle state - tracks what user wants enabled (separate from permissions)
+    // Toggle state
     const [cameraEnabled, setCameraEnabled] = useState(false);
     const [micEnabled, setMicEnabled] = useState(false);
+
+    // Recording Sources State
+    const [recordedSources, setRecordedSources] = useState<{
+        screen: Blob | null;
+        camera: Blob | null;
+        duration: number;
+    } | null>(null);
+
+    // UI toggle state - tracks what user wants enabled (separate from permissions)
+
     const [permissionError, setPermissionError] = useState<string | null>(null);
     const [permissionErrorType, setPermissionErrorType] = useState<PermissionErrorType>(null);
 
@@ -73,7 +89,8 @@ export const usePiPRecording = () => {
     // 2. REFS FOR RESOURCES
     // =============================================
 
-    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const primaryRecorderRef = useRef<MediaRecorder | null>(null);
+    const secondaryRecorderRef = useRef<MediaRecorder | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const mixerDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
     const micSourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -83,7 +100,8 @@ export const usePiPRecording = () => {
     const animationFrameRef = useRef<number | null>(null);
     const backgroundIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const startTimeRef = useRef<number | null>(null);
-    const chunksRef = useRef<Blob[]>([]);
+    const primaryChunksRef = useRef<Blob[]>([]);
+    const secondaryChunksRef = useRef<Blob[]>([]);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     // Stream Refs
@@ -474,13 +492,73 @@ export const usePiPRecording = () => {
         if (!fsmRef.current.transition("stopping")) return;
         updateState();
 
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-            mediaRecorderRef.current.stop();
-        } else {
+        let recordersToStop = 0;
+        let stoppedCount = 0;
+
+        const checkAllStopped = () => {
+            stoppedCount++;
+            if (stoppedCount >= recordersToStop) {
+                // All recorders stopped
+                const primaryBlob = primaryChunksRef.current.length > 0
+                    ? new Blob(primaryChunksRef.current, { type: "video/webm" })
+                    : null;
+
+                const secondaryBlob = secondaryChunksRef.current.length > 0
+                    ? new Blob(secondaryChunksRef.current, { type: "video/webm" })
+                    : null;
+
+                // Determine which is which based on what we started
+                // Logic: Screen is always Primary if present. Camera is Secondary if Screen present.
+                // If Screen missing, Camera is Primary.
+
+                let screenBlob = null;
+                let cameraBlob = null;
+
+                if (screenStreamRef.current) {
+                    screenBlob = primaryBlob;
+                    cameraBlob = secondaryBlob;
+                } else if (webcamStreamRef.current) {
+                    cameraBlob = primaryBlob;
+                }
+
+                const duration = calculateRecordingDuration(startTimeRef.current);
+
+                setRecordedSources({
+                    screen: screenBlob,
+                    camera: cameraBlob,
+                    duration
+                });
+
+                // For backward compatibility / initial review, we can set recordedBlob to screenBlob (or primary)
+                if (primaryBlob) {
+                    const url = URL.createObjectURL(primaryBlob);
+                    setState(prev => ({ ...prev, recordedBlob: primaryBlob, recordedVideoUrl: url }));
+                }
+
+                cleanupRecordingResources();
+                fsmRef.current.transition("completed");
+                updateState();
+            }
+        };
+
+        if (primaryRecorderRef.current && primaryRecorderRef.current.state !== "inactive") {
+            recordersToStop++;
+            primaryRecorderRef.current.onstop = checkAllStopped;
+            primaryRecorderRef.current.stop();
+        }
+
+        if (secondaryRecorderRef.current && secondaryRecorderRef.current.state !== "inactive") {
+            recordersToStop++;
+            secondaryRecorderRef.current.onstop = checkAllStopped;
+            secondaryRecorderRef.current.stop();
+        }
+
+        if (recordersToStop === 0) {
             cleanupRecordingResources();
             fsmRef.current.transition("completed");
             updateState();
         }
+
     }, [cleanupRecordingResources, updateState]);
 
     const stopScreenShare = useCallback(() => {
@@ -505,8 +583,9 @@ export const usePiPRecording = () => {
 
         try {
             setState(prev => ({ ...prev, recordedVideoUrl: "", recordedBlob: null, error: null }));
+            setRecordedSources(null);
 
-            // Setup Canvas
+            // Setup Canvas (Keep for Preview)
             const canvas = document.createElement("canvas");
             canvas.width = CANVAS_WIDTH;
             canvas.height = CANVAS_HEIGHT;
@@ -516,13 +595,13 @@ export const usePiPRecording = () => {
             drawFrame();
             backgroundIntervalRef.current = setInterval(() => { if (document.hidden) drawFrame(); }, 100);
 
-            // Setup Audio (Always create mixer)
+            // Setup Audio Mixer
             const ctx = new AudioContext();
             audioContextRef.current = ctx;
             const dest = ctx.createMediaStreamDestination();
             mixerDestinationRef.current = dest;
 
-            // Screen Audio
+            // Mix Audio Logic
             if (screenStreamRef.current) {
                 const displayStream = screenStreamRef.current;
                 if (displayStream.getAudioTracks().length > 0) {
@@ -532,8 +611,6 @@ export const usePiPRecording = () => {
                     source.connect(gain).connect(dest);
                 }
             }
-
-            // Mic Audio
             if (microphoneStreamRef.current && micEnabled) {
                 const micStream = microphoneStreamRef.current;
                 if (micStream.getAudioTracks().length > 0) {
@@ -545,28 +622,63 @@ export const usePiPRecording = () => {
                 }
             }
 
-            // Compose Stream
+            // Create Final Preview Stream (Canvas + Mixed Audio) - For UI Feedback
             const canvasStream = canvas.captureStream(FRAME_RATE);
-            const finalStream = new MediaStream();
-            canvasStream.getVideoTracks().forEach(t => finalStream.addTrack(t));
-            dest.stream.getAudioTracks().forEach(t => finalStream.addTrack(t));
+            const previewStreamCombined = new MediaStream();
+            canvasStream.getVideoTracks().forEach(t => previewStreamCombined.addTrack(t));
+            // Add audio to preview if you want local feedback? Usually muted to avoid feedback loop.
+            // dest.stream.getAudioTracks().forEach(t => previewStreamCombined.addTrack(t)); 
+            setPreviewStream(previewStreamCombined);
 
-            setPreviewStream(finalStream);
+            // =========================================================
+            // DUAL RECORDER SETUP
+            // =========================================================
 
-            // Start Recorder
-            chunksRef.current = [];
-            mediaRecorderRef.current = setupRecording(finalStream, {
-                onDataAvailable: (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); },
-                onStop: () => {
-                    const { blob, url } = createRecordingBlob(chunksRef.current);
-                    if (fsmRef.current.transition("completed")) {
-                        setState(prev => ({ ...prev, recordedBlob: blob, recordedVideoUrl: url }));
-                    }
-                    cleanupRecordingResources();
+            primaryChunksRef.current = [];
+            secondaryChunksRef.current = [];
+
+            let primaryStream: MediaStream | null = null;
+            let secondaryStream: MediaStream | null = null;
+
+            // Scenario 1: Screen + Camera
+            if (screenStreamRef.current && permissions.screen) {
+                // Primary = Screen + Mixed Audio
+                primaryStream = new MediaStream();
+                screenStreamRef.current.getVideoTracks().forEach(t => primaryStream!.addTrack(t));
+                dest.stream.getAudioTracks().forEach(t => primaryStream!.addTrack(t));
+
+                if (webcamStreamRef.current && cameraEnabled) {
+                    // Secondary = Camera (Video Only)
+                    secondaryStream = new MediaStream();
+                    webcamStreamRef.current.getVideoTracks().forEach(t => secondaryStream!.addTrack(t));
                 }
-            });
+            }
+            // Scenario 2: Camera Only
+            else if (webcamStreamRef.current && cameraEnabled) {
+                // Primary = Camera + Mixed Audio
+                primaryStream = new MediaStream();
+                webcamStreamRef.current.getVideoTracks().forEach(t => primaryStream!.addTrack(t));
+                dest.stream.getAudioTracks().forEach(t => primaryStream!.addTrack(t));
+            }
 
-            mediaRecorderRef.current.start(1000);
+            if (!primaryStream) throw new Error("No media stream available to record");
+
+            // Start Primary
+            primaryRecorderRef.current = setupRecording(primaryStream, {
+                onDataAvailable: (e) => { if (e.data.size > 0) primaryChunksRef.current.push(e.data); },
+                onStop: () => { } // Handled in performStop
+            });
+            primaryRecorderRef.current.start(1000);
+
+            // Start Secondary (if exists)
+            if (secondaryStream) {
+                secondaryRecorderRef.current = setupRecording(secondaryStream, {
+                    onDataAvailable: (e) => { if (e.data.size > 0) secondaryChunksRef.current.push(e.data); },
+                    onStop: () => { }
+                });
+                secondaryRecorderRef.current.start(1000);
+            }
+
             startTimeRef.current = Date.now();
 
             if (fsmRef.current.transition("recording")) {
@@ -645,6 +757,9 @@ export const usePiPRecording = () => {
             else await requestScreenShare();
         },
         resetRecording,
-        canRecord
+        canRecord,
+        recordedSources,
+        MAX_RECORDING_DURATION,
+        canvasDimensions: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }
     };
 };

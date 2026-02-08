@@ -22,10 +22,11 @@ export default function RecordingInterface() {
     startRecording,
     stopRecording,
     previewStream,
-    setWebcamConfig,
+
     canvasDimensions,
     recordedVideoUrl,
     recordedBlob,
+    recordedSources,
     resetRecording,
     MAX_RECORDING_DURATION,
     permissions,
@@ -77,8 +78,8 @@ export default function RecordingInterface() {
     setUploadError(null);
   };
 
-  const handleUpload = async () => {
-    if (!recordedBlob) return;
+  const handleUpload = async (blobToUpload: Blob) => {
+    if (!blobToUpload) return;
 
     setReviewState("uploading");
     setUploadError(null);
@@ -87,11 +88,11 @@ export default function RecordingInterface() {
     try {
       // 1. Get Presigned URL
       const { videoId, uploadUrl } = await requestPresignedUrl(
-        recordedBlob.size,
+        blobToUpload.size,
       );
 
       // 2. Upload to S3
-      await uploadToS3(recordedBlob, uploadUrl, (progress) => {
+      await uploadToS3(blobToUpload, uploadUrl, (progress) => {
         setUploadProgress(progress);
       });
 
@@ -161,6 +162,7 @@ export default function RecordingInterface() {
           videoLinks={videoLinks}
           setVideoLinks={setVideoLinks}
           recordedVideoUrl={recordedVideoUrl}
+          recordedSources={recordedSources}
           recordingDuration={recordingDuration}
           uploadProgress={uploadProgress}
           shareData={shareData}

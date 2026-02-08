@@ -65,7 +65,7 @@ export function ControlBar({
 
   if (status === "idle") {
     return (
-      <div className="flex items-center justify-center gap-8 bg-[#1b1b1b] p-1">
+      <div className="flex items-center justify-center gap-8 m-2 rounded-lg bg-[#1A1B1D] border border-[#2E2E30] p-1">
         {/* Record/Start Button - DISABLED when no media source */}
         <div className="flex flex-col items-center gap-2">
           <button
