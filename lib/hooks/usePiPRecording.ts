@@ -86,6 +86,9 @@ export const usePiPRecording = () => {
     const [screenPreviewStream, setScreenPreviewStream] = useState<MediaStream | null>(null);
     const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
 
+    // Countdown state
+    const [countdownValue, setCountdownValue] = useState<number | null>(null);
+
     // =============================================
     // 2. REFS FOR RESOURCES
     // =============================================
@@ -104,6 +107,7 @@ export const usePiPRecording = () => {
     const primaryChunksRef = useRef<Blob[]>([]);
     const secondaryChunksRef = useRef<Blob[]>([]);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     // Stream Refs
     const screenStreamRef = useRef<MediaStream | null>(null);
@@ -601,10 +605,35 @@ export const usePiPRecording = () => {
         if (!fsmRef.current.transition("initializing")) return;
         updateState();
 
-        try {
-            setState(prev => ({ ...prev, recordedVideoUrl: "", recordedBlob: null, error: null }));
-            setRecordedSources(null);
+        setState(prev => ({ ...prev, recordedVideoUrl: "", recordedBlob: null, error: null }));
+        setRecordedSources(null);
 
+        // Start countdown
+        setCountdownValue(3);
+        let count = 3;
+
+        await new Promise<void>((resolve, reject) => {
+            countdownIntervalRef.current = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    setCountdownValue(count);
+                } else {
+                    if (countdownIntervalRef.current) {
+                        clearInterval(countdownIntervalRef.current);
+                        countdownIntervalRef.current = null;
+                    }
+                    setCountdownValue(null);
+                    resolve();
+                }
+            }, 1000);
+        });
+
+        // Check if cancelled during countdown
+        if (fsmRef.current.state !== "initializing") {
+            return;
+        }
+
+        try {
             // Setup Canvas (Keep for Preview)
             const canvas = document.createElement("canvas");
             canvas.width = CANVAS_WIDTH;
@@ -646,8 +675,6 @@ export const usePiPRecording = () => {
             const canvasStream = canvas.captureStream(FRAME_RATE);
             const previewStreamCombined = new MediaStream();
             canvasStream.getVideoTracks().forEach(t => previewStreamCombined.addTrack(t));
-            // Add audio to preview if you want local feedback? Usually muted to avoid feedback loop.
-            // dest.stream.getAudioTracks().forEach(t => previewStreamCombined.addTrack(t)); 
             setPreviewStream(previewStreamCombined);
 
             // =========================================================
@@ -733,12 +760,25 @@ export const usePiPRecording = () => {
     useEffect(() => {
         return () => {
             console.log("[Unmount] Component cleanup");
+            if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
             stopStreamTracks(webcamStreamRef.current);
             stopStreamTracks(microphoneStreamRef.current);
             stopStreamTracks(screenStreamRef.current);
             if (audioContextRef.current) audioContextRef.current.close();
         };
     }, []);
+
+    const cancelCountdown = useCallback(() => {
+        if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+        }
+        setCountdownValue(null);
+        if (fsmRef.current.state === "initializing") {
+            fsmRef.current.transition("idle");
+            updateState();
+        }
+    }, [updateState]);
 
     const resetRecording = useCallback(() => {
         if (state.recordedVideoUrl) URL.revokeObjectURL(state.recordedVideoUrl);
@@ -780,6 +820,8 @@ export const usePiPRecording = () => {
         canRecord,
         recordedSources,
         MAX_RECORDING_DURATION,
-        canvasDimensions: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }
+        canvasDimensions: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+        countdownValue,
+        cancelCountdown,
     };
 };

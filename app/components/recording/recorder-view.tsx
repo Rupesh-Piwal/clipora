@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 
 interface RecorderViewProps {
   status:
-    | "idle"
-    | "recording"
-    | "initializing"
-    | "stopping"
-    | "completed"
-    | "error";
+  | "idle"
+  | "recording"
+  | "initializing"
+  | "stopping"
+  | "completed"
+  | "error";
   webcamEnabled: boolean;
   previewStream: MediaStream | null;
   recordingDuration: number;
@@ -33,6 +33,9 @@ interface RecorderViewProps {
   canRecord: boolean;
   permissionError: string | null;
   permissionErrorType?: string | null;
+  // Countdown props
+  countdownValue: number | null;
+  onCancelCountdown: () => void;
 }
 
 export function RecorderView({
@@ -54,6 +57,8 @@ export function RecorderView({
   screenPreviewStream,
   canRecord,
   permissionError,
+  countdownValue,
+  onCancelCountdown,
 }: RecorderViewProps) {
   // --- Refs & State ---
   const containerRef = useRef<HTMLDivElement>(null);
@@ -276,6 +281,21 @@ export function RecorderView({
             )}
 
             {/* OVERLAYS */}
+            {/* Countdown Overlay */}
+            {countdownValue !== null && (
+              <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm">
+                <div className="text-9xl font-bold text-white animate-in zoom-in duration-300" key={countdownValue}>
+                  {countdownValue}
+                </div>
+                <button
+                  onClick={onCancelCountdown}
+                  className="mt-8 px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full border border-white/20 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
             <div className="absolute top-6 left-6 z-10 flex flex-col gap-3">
               {status === "recording" && (
                 <div className="flex items-center gap-2.5 bg-red-500/15 text-red-400 px-4 py-2 rounded-full backdrop-blur-xl border border-red-500/20 shadow-lg animate-in slide-in-from-top-2 fade-in duration-300">
@@ -319,9 +339,9 @@ export function RecorderView({
         micEnabled={micEnabled}
         onToggleMic={onToggleMic}
         recordingDuration={recordingDuration}
-        onReset={() => {}}
-        onPause={() => {}}
-        onDelete={() => {}}
+        onReset={() => { }}
+        onPause={() => { }}
+        onDelete={() => { }}
         screenShareEnabled={permissions.screen}
         onToggleScreenShare={onRequestScreen}
         canRecord={canRecord}

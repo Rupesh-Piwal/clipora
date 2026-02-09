@@ -43,6 +43,8 @@ export default function RecordingInterface() {
     toggleScreenShare,
     permissionError,
     permissionErrorType,
+    countdownValue,
+    cancelCountdown,
   } = usePiPRecording();
 
   // Review / Upload State
@@ -117,12 +119,12 @@ export default function RecordingInterface() {
   // --- Views ---
 
   // 1. LOADING / STOPPING
-  if (status === "initializing" || status === "stopping") {
+  if (status === "stopping") {
     return <LoadingView status={status} />;
   }
 
-  // 2. RECORDING / IDLE VIEW
-  if (status === "idle" || status === "recording") {
+  // 2. RECORDING / IDLE / INITIALIZING (countdown) VIEW
+  if (status === "idle" || status === "recording" || status === "initializing") {
     return (
       <main className="flex-1 max-w-8xl mx-auto h-screen bg-[#000101]">
         <RecorderView
@@ -145,6 +147,8 @@ export default function RecordingInterface() {
           canRecord={canRecord}
           permissionError={permissionError}
           permissionErrorType={permissionErrorType}
+          countdownValue={countdownValue}
+          onCancelCountdown={cancelCountdown}
         />
       </main>
     );
