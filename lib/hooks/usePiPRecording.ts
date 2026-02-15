@@ -3,6 +3,8 @@ import { RecordingStateMachine } from "../recording-state-machine";
 import { useStreams } from "./useStreams";
 import { useRecording } from "./useRecording";
 import { BunnyRecordingState, RecordingState } from "../types";
+import { BackgroundOption, NO_BACKGROUND } from "../backgrounds";
+import { drawBackground } from "../layouts/layout-engine";
 
 // Configuration
 const CANVAS_WIDTH = 1920;
@@ -22,6 +24,24 @@ export const usePiPRecording = () => {
 
     const [countdownValue, setCountdownValue] = useState<number | null>(null);
     const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    // --- Background State ---
+    const [background, setBackground] = useState<BackgroundOption>(NO_BACKGROUND);
+    const backgroundImageElementRef = useRef<HTMLImageElement | null>(null);
+
+    // Preload background image
+    useEffect(() => {
+        if (background.type === "image" && background.value) {
+            const img = new Image();
+            img.src = background.value;
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+                backgroundImageElementRef.current = img;
+            };
+        } else {
+            backgroundImageElementRef.current = null;
+        }
+    }, [background]);
 
     // --- External Hooks ---
     const {
@@ -127,6 +147,8 @@ export const usePiPRecording = () => {
         // 1. Clear
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        // 1. Draw Background
+        drawBackground(ctx, CANVAS_WIDTH, CANVAS_HEIGHT, backgroundImageElementRef.current || background);
 
         // 2. Draw Screen
         if (screenVideoRef.current && screenVideoRef.current.readyState >= 2) {
@@ -280,7 +302,7 @@ export const usePiPRecording = () => {
     // Sync duration from hook to state
     useEffect(() => {
         setState(p => ({ ...p, recordingDuration }));
-        
+
         // Auto-stop limit
         if (state.isRecording && recordingDuration >= 120) {
             stopRecordingWrapper();
@@ -358,5 +380,7 @@ export const usePiPRecording = () => {
         canvasDimensions: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
         countdownValue,
         cancelCountdown,
+        background,
+        setBackground,
     };
 };

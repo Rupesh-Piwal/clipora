@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { ControlBar } from "./control-bar";
 import { formatTime } from "./utils";
 import { Button } from "@/components/ui/button";
+import { BackgroundOption } from "@/lib/backgrounds";
 
 interface RecorderViewProps {
   status:
@@ -36,6 +37,8 @@ interface RecorderViewProps {
   // Countdown props
   countdownValue: number | null;
   onCancelCountdown: () => void;
+  background: BackgroundOption;
+  onSetBackground: (bg: BackgroundOption) => void;
 }
 
 export function RecorderView({
@@ -59,6 +62,8 @@ export function RecorderView({
   permissionError,
   countdownValue,
   onCancelCountdown,
+  background,
+  onSetBackground,
 }: RecorderViewProps) {
   // --- Refs & State ---
   const containerRef = useRef<HTMLDivElement>(null);
@@ -345,6 +350,8 @@ export function RecorderView({
         screenShareEnabled={permissions.screen}
         onToggleScreenShare={onRequestScreen}
         canRecord={canRecord}
+        background={background}
+        onSetBackground={onSetBackground}
       />
     </div>
   );

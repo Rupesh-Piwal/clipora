@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -12,17 +12,9 @@ import {
   AlertCircle,
   CheckCircle,
   RotateCcw,
-  ImageIcon,
-  PaintBucket
+  Play
 } from "lucide-react";
 import { formatTime } from "./utils";
-import { LayoutSelector } from "./layout-selector";
-import { PostProcessor, PostProcessorRef } from "./post-processor";
-import { LayoutId } from "@/lib/layouts/layout-engine";
-import { RecordedState } from "@/lib/hooks/usePiPRecording";
-import { BACKGROUND_IMAGES, BACKGROUND_GRADIENTS, NO_BACKGROUND, BackgroundOption } from "@/lib/backgrounds";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
 
 type ReviewState = "review" | "uploading" | "success" | "error";
 
@@ -33,15 +25,15 @@ interface ReviewViewProps {
   setVideoDescription: (description: string) => void;
   videoLinks: string[];
   setVideoLinks: (links: string[]) => void;
-  recordedVideoUrl: string | null; // Keep for fallback or unused
-  recordedSources?: RecordedState | null; // NEW: Dual streams
+  recordedVideoUrl: string | null;
+  recordedBlob: Blob | null; // Added
   recordingDuration: number;
   uploadProgress: number;
   shareData: { videoId: string; url: string } | null;
   uploadError: string | null;
   showDiscardDialog: boolean;
   setShowDiscardDialog: (show: boolean) => void;
-  onUpload: (blob: Blob) => void; // UPDATED: Accepts processed blob
+  onUpload: (blob: Blob) => void;
   onDiscard: () => void;
 }
 
@@ -53,7 +45,7 @@ export function ReviewView({
   videoLinks,
   setVideoLinks,
   recordedVideoUrl,
-  recordedSources,
+  recordedBlob,
   recordingDuration,
   uploadProgress,
   shareData,
@@ -64,57 +56,36 @@ export function ReviewView({
   onDiscard,
 }: ReviewViewProps) {
 
-  // Layout State
-  const [layoutId, setLayoutId] = useState<LayoutId>("screen-camera-br");
-  const postProcessorRef = useRef<PostProcessorRef>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  // Background State
-  const [selectedBackground, setSelectedBackground] = useState<BackgroundOption>(NO_BACKGROUND);
-
-  // Default to screen-only if no camera, or camera-only if no screen?
-  // We can auto-detect in useEffect
-  useEffect(() => {
-    if (recordedSources) {
-      if (!recordedSources.screen && recordedSources.camera) {
-        setLayoutId("camera-only-center");
-      } else if (recordedSources.screen && !recordedSources.camera) {
-        setLayoutId("screen-only");
-      }
-    }
-  }, [recordedSources]);
-
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const handleExportAndUpload = () => {
-    if (postProcessorRef.current) {
-      setIsProcessing(true);
-      postProcessorRef.current.exportVideo();
+    if (recordedBlob) {
+      onUpload(recordedBlob);
     } else {
-      // Fallback for legacy single blob?
-      // Not implemented in this path, assuming dual streams for this feature.
-      console.warn("PostProcessor not ready");
+      console.warn("No recorded blob found");
     }
   };
 
-  const handleExportComplete = (url: string, blob: Blob) => {
-    setIsProcessing(false);
-    onUpload(blob);
-  };
-
-  const handleExportError = (err: Error) => {
-    setIsProcessing(false);
-    console.error("Export failed", err);
-    // Show error?
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-1rem)] animate-in fade-in duration-500 p-4 lg:p-8 bg-[#0a0a0a]">
-      {/* LEFT: Video Player / Layout Editor */}
+      {/* LEFT: Video Player */}
       <div className="lg:col-span-2 flex flex-col gap-4 min-h-0 border border-white/10 rounded-2xl p-4 bg-[#1a1a1a]">
         <div className="flex flex-row gap-2 justify-between">
           <div className="flex flex-row justify-center items-center gap-2">
             <h2 className="text-lg font-thin text-white uppercase tracking-wide">
-              Video Editor
+              Review Recording
             </h2>
             <div className="bg-white w-0.5 h-4.5" />
 
@@ -133,34 +104,42 @@ export function ReviewView({
           </div>
         </div>
 
-        <div className="flex-1 rounded-xl overflow-hidden border border-white/10 shadow-sm hover:shadow-md transition-shadow duration-300 bg-black relative">
-          {/* Main Editor Area */}
-          {recordedSources ? (
-            <PostProcessor
-              ref={postProcessorRef}
-              screenBlob={recordedSources.screen}
-              cameraBlob={recordedSources.camera}
-              initialLayout={layoutId}
-              background={selectedBackground}
-              onExportStart={() => {/* Handled in local state if needed */ }}
-              onExportProgress={(p) => {/* Optional: Show progress bar overlay */ }}
-              onExportComplete={handleExportComplete}
-              onExportError={handleExportError}
-            />
+        <div className="flex-1 rounded-xl overflow-hidden border border-white/10 shadow-sm hover:shadow-md transition-shadow duration-300 bg-black relative group">
+          {recordedVideoUrl ? (
+            <div className="relative w-full h-full">
+              <video
+                ref={videoRef}
+                src={recordedVideoUrl}
+                className="w-full h-full object-contain"
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+                onClick={togglePlay}
+              />
+
+              {/* Play/Pause Overlay Button */}
+              {!isPlaying && (
+                <div
+                  className="absolute inset-0 flex items-center justify-center bg-black/20 cursor-pointer group-hover:bg-black/30 transition-colors"
+                  onClick={togglePlay}
+                >
+                  <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20">
+                    <Play className="w-8 h-8 text-white fill-white ml-1" />
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="flex items-center justify-center h-full text-white/50">
-              No recording sources found.
+              No recording found.
             </div>
           )}
 
-          {/* Processing Overlay */}
-          {(isProcessing || reviewState === 'uploading') && (
+          {/* Uploading Overlay */}
+          {reviewState === 'uploading' && (
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
               <div className="flex flex-col items-center gap-4">
                 <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-                <p className="text-white font-medium">
-                  {isProcessing ? "Rendering Layout..." : "Uploading..."}
-                </p>
+                <p className="text-white font-medium">Uploading...</p>
               </div>
             </div>
           )}
@@ -174,115 +153,6 @@ export function ReviewView({
           {/* 1. Review Mode */}
           {reviewState === "review" && (
             <div className="space-y-8 animate-in fade-in duration-300 flex flex-col flex-1">
-
-              {/* Layout Selector */}
-              <div>
-                <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-                  <span className="w-1 h-4 bg-indigo-500 rounded-full" />
-                  Layout Composition
-                </h3>
-                <LayoutSelector
-                  selectedLayout={layoutId}
-                  onSelect={setLayoutId}
-                  disabled={isProcessing}
-                />
-              </div>
-
-              <div className="h-px bg-white/10" />
-
-              {/* Background Selector */}
-              <div>
-                <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-                  <span className="w-1 h-4 bg-purple-500 rounded-full" />
-                  Background
-                </h3>
-
-                <Tabs defaultValue="image" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 bg-[#0a0a0a] border border-white/10 mb-4 p-1 h-auto">
-                    <TabsTrigger value="image" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/60 py-2">
-                      <ImageIcon className="w-3 h-3 mr-2" /> Images
-                    </TabsTrigger>
-                    <TabsTrigger value="gradient" className="text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/60 py-2">
-                      <PaintBucket className="w-3 h-3 mr-2" /> Gradients
-                    </TabsTrigger>
-                  </TabsList>
-
-                  {/* None Option - Always available */}
-                  <button
-                    onClick={() => setSelectedBackground(NO_BACKGROUND)}
-                    className={cn(
-                      "w-full flex items-center gap-3 p-2 rounded-lg border mb-4 transition-all",
-                      selectedBackground.id === "none"
-                        ? "bg-white/10 border-indigo-500/50"
-                        : "bg-[#0a0a0a] border-white/10 hover:border-white/20"
-                    )}
-                  >
-                    <div className="w-8 h-8 rounded bg-black border border-white/10 flex items-center justify-center">
-                      <span className="text-white/40 text-[10px]">None</span>
-                    </div>
-                    <span className="text-sm text-white/80">No Background</span>
-                  </button>
-
-                  <TabsContent value="image" className="mt-0">
-                    <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                      {BACKGROUND_IMAGES.map((bg) => (
-                        <button
-                          key={bg.id}
-                          onClick={() => setSelectedBackground(bg)}
-                          className={cn(
-                            "relative group aspect-video rounded-lg overflow-hidden border transition-all h-15 w-20",
-                            selectedBackground.id === bg.id
-                              ? "border-indigo-500 ring-2 ring-indigo-500/20"
-                              : "border-white/10 hover:border-white/30"
-                          )}
-                        >
-                          <img
-                            src={bg.preview}
-                            alt={bg.label}
-                            className="w-full h-full object-cover cursor-pointer"
-                            loading="lazy"
-                          />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                          {selectedBackground.id === bg.id && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                              <CheckCircle className="w-5 h-5 text-white drop-shadow-md" />
-                            </div>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="gradient" className="mt-0">
-                    <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                      {BACKGROUND_GRADIENTS.map((bg) => (
-                        <button
-                          key={bg.id}
-                          onClick={() => setSelectedBackground(bg)}
-                          className={cn(
-                            "relative group aspect-video rounded-lg overflow-hidden border transition-all h-15 w-20",
-                            selectedBackground.id === bg.id
-                              ? "border-indigo-500 ring-2 ring-indigo-500/20"
-                              : "border-white/10 hover:border-white/30"
-                          )}
-                        >
-                          <div
-                            className="w-full h-full"
-                            style={{ background: bg.preview }}
-                          />
-                          {selectedBackground.id === bg.id && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                              <CheckCircle className="w-5 h-5 text-white drop-shadow-md" />
-                            </div>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </div>
-
-              <div className="h-px bg-white/10" />
 
               <div>
                 <label className="text-sm font-medium text-white block mb-2">
@@ -324,17 +194,16 @@ export function ReviewView({
                   size="lg"
                   className="w-full gap-2 bg-white text-black hover:bg-white/90 transition-all duration-200 cursor-pointer"
                   onClick={handleExportAndUpload}
-                  disabled={isProcessing}
+                  disabled={reviewState === 'uploading'}
                 >
                   <Upload className="w-4 h-4" />
-                  {isProcessing ? "Processing..." : "Finish & Upload"}
+                  Finish & Upload
                 </Button>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     onClick={onDiscard}
                     variant="outline"
                     className="gap-2 transition-all duration-200 bg-transparent border border-white/10 hover:bg-white/5 cursor-pointer text-white"
-                    disabled={isProcessing}
                   >
                     <RefreshCw className="w-4 h-4" /> New
                   </Button>
@@ -342,7 +211,6 @@ export function ReviewView({
                     onClick={() => setShowDiscardDialog(true)}
                     variant="outline"
                     className="gap-2 text-red-400 hover:text-red-300 transition-all duration-200 border border-red-400/60 bg-transparent hover:bg-red-400/10 cursor-pointer"
-                    disabled={isProcessing}
                   >
                     <Trash2 className="w-4 h-4" /> Discard
                   </Button>
@@ -351,10 +219,9 @@ export function ReviewView({
             </div>
           )}
 
-          {/* 2. Uploading Mode (Handled via overlay mostly, but keep status here too) */}
+          {/* 2. Uploading Mode */}
           {reviewState === "uploading" && (
             <div className="space-y-6 py-8 animate-in fade-in duration-300 flex flex-col items-center justify-center flex-1">
-              {/* ... (Existing upload UI) ... */}
               <div className="space-y-4 text-center w-full">
                 <div className="flex justify-center">
                   <div className="relative w-12 h-12">

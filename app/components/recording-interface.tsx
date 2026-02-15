@@ -31,7 +31,7 @@ export default function RecordingInterface() {
     MAX_RECORDING_DURATION,
     permissions,
     requestCameraAndMic,
-    requestScreenShare,
+    toggleScreenShare,
     // New exports
     webcamPreviewStream,
     screenPreviewStream,
@@ -40,11 +40,12 @@ export default function RecordingInterface() {
     micEnabled,
     toggleCamera,
     toggleMic,
-    toggleScreenShare,
     permissionError,
     permissionErrorType,
     countdownValue,
     cancelCountdown,
+    background,
+    setBackground,
   } = usePiPRecording();
 
   // Review / Upload State
@@ -149,6 +150,8 @@ export default function RecordingInterface() {
           permissionErrorType={permissionErrorType}
           countdownValue={countdownValue}
           onCancelCountdown={cancelCountdown}
+          background={background}
+          onSetBackground={setBackground}
         />
       </main>
     );
@@ -166,7 +169,7 @@ export default function RecordingInterface() {
           videoLinks={videoLinks}
           setVideoLinks={setVideoLinks}
           recordedVideoUrl={recordedVideoUrl}
-          recordedSources={recordedSources}
+          recordedBlob={recordedBlob}
           recordingDuration={recordingDuration}
           uploadProgress={uploadProgress}
           shareData={shareData}

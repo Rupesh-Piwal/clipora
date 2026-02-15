@@ -42,7 +42,7 @@ interface Rect {
 }
 
 // Helper: Resolve Background
-const drawBackground = (
+export const drawBackground = (
     ctx: CanvasRenderingContext2D,
     w: number,
     h: number,
