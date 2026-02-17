@@ -1,7 +1,7 @@
 import { SiteHeader } from "@/components/landing/site-header";
 import { Hero } from "@/components/landing/hero";
 import { Features } from "@/components/landing/features";
-import { Comparison } from "@/components/landing/comparison";
+import { Faq } from "@/components/landing/faq";
 import { Footer } from "@/components/landing/footer";
 
 export default function LandingPage() {
@@ -11,7 +11,7 @@ export default function LandingPage() {
       <main className="flex-1">
         <Hero />
         <Features />
-        <Comparison />
+        <Faq />
       </main>
       <Footer />
     </div>

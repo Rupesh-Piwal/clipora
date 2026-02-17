@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Play } from "lucide-react";
+import { HeroVideoDialog } from "../ui/hero-video-dialog";
 
 export function Hero() {
   return (
@@ -7,6 +7,17 @@ export function Hero() {
       <div className="container mx-auto max-w-5xl px-0 border-x border-white/10 h-full relative">
         {/* Main Content Area */}
         <div className="py-8 flex flex-col items-center text-center px-6 relative z-10">
+          {/* Top Left */}
+          <span className="absolute top-[-1px] left-[-1px] w-2 h-2 border-t border-l border-white/15" />
+
+          {/* Top Right */}
+          <span className="absolute top-[-1px] right-[-1px] w-2 h-2 border-t border-r border-white/15" />
+
+          {/* Bottom Left */}
+          <span className="absolute bottom-[-1px] left-[-1px] w-2 h-2 border-b border-l border-white/15" />
+
+          {/* Bottom Right */}
+          <span className="absolute bottom-[-1px] right-[-1px] w-2 h-2 border-b border-r border-white/15" />
           {/* Tag */}
           <div className="mb-8 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 bg-white/5 font-mono text-xs text-white">
             <span className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6]" />
@@ -72,10 +83,10 @@ export function Hero() {
         </div>
 
         {/* Video/Visual Area with "Purple Strips" Image */}
-        <div className="relative border-t border-white/10">
+        <div className="mx-5 md:mx-0 rounded-2xl md:rounded-none relative border-t border-white/10">
           {/* The Purple Strips Image Background */}
           <div
-            className="absolute inset-x-0 top-0 h-[500px] bg-cover bg-center bg-no-repeat opacity-80"
+            className="absolute inset-x-0 top-0 h-full bg-cover bg-center bg-no-repeat opacity-90"
             style={{
               backgroundImage: "url('/hero-banner.jpg')",
               // Fallback gradient if image missing
@@ -85,21 +96,14 @@ export function Hero() {
           {/* Fallback pattern overlaid if image keeps failing, ensuring vibe */}
           <div className="absolute inset-x-0 top-0 h-[500px] bg-[repeating-linear-gradient(0deg,rgba(139,92,246,0.1)_0px,rgba(139,92,246,0.1)_1px,transparent_1px,transparent_4px)] mix-blend-overlay pointer-events-none" />
 
-          <div className="relative z-10 px-6 pb-20 pt-12 flex justify-center">
-            <div className="w-full max-w-3xl aspect-video bg-black border border-white/20 relative shadow-2xl flex items-center justify-center group overflow-hidden">
-              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-10 transition-opacity" />
-
-              {/* Corner Markers for Video */}
-              <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-white/30" />
-              <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-white/30" />
-              <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-white/30" />
-              <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-white/30" />
-
-              {/* Play Button */}
-              <div className="w-16 h-16 border border-white text-white flex items-center justify-center hover:bg-white hover:text-black transition-all cursor-pointer">
-                <Play className="w-6 h-6 fill-current" />
-              </div>
-            </div>
+          <div className="relative z-10 px-6 pb-20 pt-12 flex justify-baseline">
+            <HeroVideoDialog
+              className="block dark:hidden border-transparent rounded-4xl overflow-hidden shadow-lg cursor-pointer opacity-95"
+              animationStyle="from-center"
+              videoSrc="/videos/dummy-video.mp4"
+              thumbnailSrc="/dummy-image.png"
+              thumbnailAlt="Dummy Video Thumbnail"
+            />
           </div>
         </div>
       </div>

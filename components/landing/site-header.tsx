@@ -6,11 +6,18 @@ export function SiteHeader() {
   return (
     <>
       {/* HEADER */}
-      <header className="sticky top-0 z-50 w-full bg-[#0A0A0A] border-b border-white/10 backdrop-blur-sm">
+      <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-background/60 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto max-w-5xl px-0 border-x border-white/10">
           <div className="flex h-16 items-center justify-between px-6">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-3">
+            <Link
+              href="/"
+              onClick={(e) => {
+                e.preventDefault();
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="flex items-center gap-3"
+            >
               {/* <div className="w-8 h-8 rounded-md bg-[#4f3095] flex items-center justify-center text-white font-mono font-bold text-lg">
                 S
               </div> */}
@@ -22,40 +29,43 @@ export function SiteHeader() {
                   </span>
 
                   {/* Top Left */}
-                  <span className="absolute top-[-1px] left-[-1px] w-2 h-2 border-t border-l border-white/40" />
+                  <span className="absolute top-[-1px] left-[-1px] w-2 h-2 border-t border-l border-white/30" />
 
                   {/* Top Right */}
-                  <span className="absolute top-[-1px] right-[-1px] w-2 h-2 border-t border-r border-white/40" />
+                  <span className="absolute top-[-1px] right-[-1px] w-2 h-2 border-t border-r border-white/30" />
 
                   {/* Bottom Left */}
-                  <span className="absolute bottom-[-1px] left-[-1px] w-2 h-2 border-b border-l border-white/40" />
+                  <span className="absolute bottom-[-1px] left-[-1px] w-2 h-2 border-b border-l border-white/30" />
 
                   {/* Bottom Right */}
-                  <span className="absolute bottom-[-1px] right-[-1px] w-2 h-2 border-b border-r border-white/40" />
+                  <span className="absolute bottom-[-1px] right-[-1px] w-2 h-2 border-b border-r border-white/30" />
                 </div>
               </div>
             </Link>
 
             {/* Nav */}
-            <nav className="hidden md:flex items-center gap-8 font-mono text-sm text-white/80">
-              <Link
-                href="#features"
-                className="hover:text-[#8B5CF6] transition-colors"
-              >
-                Features
-              </Link>
-              <Link
-                href="#how-it-works"
-                className="hover:text-[#8B5CF6] transition-colors"
-              >
-                How it works?
-              </Link>
-              <Link
-                href="#faqs"
-                className="hover:text-[#8B5CF6] transition-colors"
-              >
-                FAQs
-              </Link>
+            <nav className="flex items-center gap-8 font-mono text-sm text-white/80">
+              {[
+                { name: "Features", href: "#features" },
+                { name: "FAQs", href: "#faqs" },
+              ].map((link) => (
+                <button
+                  key={link.name}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const target = document.querySelector(link.href);
+                    if (target) {
+                      target.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                    }
+                  }}
+                  className="hover:text-[#8B5CF6] transition-colors cursor-pointer"
+                >
+                  {link.name}
+                </button>
+              ))}
             </nav>
           </div>
         </div>
