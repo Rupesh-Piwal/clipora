@@ -43,7 +43,6 @@ export function SmoothScrollProvider({ children }: SmoothScrollProviderProps) {
       gestureOrientation: "vertical",
       smoothWheel: true,
       wheelMultiplier: 1,
-      smoothTouch: false, // Disable on touch for better mobile performance
       touchMultiplier: 2,
       infinite: false,
     });

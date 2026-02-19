@@ -2,13 +2,13 @@
 
 import { useSmoothReveal } from "@/hooks/use-smooth-reveal";
 import { cn } from "@/lib/utils";
-import { CSSProperties, ReactNode } from "react";
+import { CSSProperties, ReactNode, ElementType } from "react";
 
 interface AnimatedSectionProps {
   children: ReactNode;
   className?: string;
   delay?: number;
-  as?: keyof JSX.IntrinsicElements;
+  as?: ElementType; // ✅ FIXED
 }
 
 export function AnimatedSection({
@@ -26,11 +26,7 @@ export function AnimatedSection({
   };
 
   return (
-    <Component
-      ref={ref as any}
-      className={cn(className)}
-      style={style}
-    >
+    <Component ref={ref as any} className={className} style={style}>
       {children}
     </Component>
   );

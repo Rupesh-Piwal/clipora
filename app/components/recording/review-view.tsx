@@ -3,17 +3,15 @@
 import { useState, useRef } from "react";
 import {
     Upload,
-    RefreshCw,
-    Trash2,
     ExternalLink,
     Copy,
     AlertCircle,
     CheckCircle,
     RotateCcw,
-    Play
+    Play,
+    Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { formatTime } from "./utils";
 import { LinkIcon } from "@phosphor-icons/react";
 
@@ -81,7 +79,7 @@ export function ReviewView({
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 min-h-screen animate-in fade-in duration-700 p-6 lg:p-10 bg-[#080809] selection:bg-emerald-500/30">
-            <div className="lg:col-span-2 flex w-full flex-col gap-6 min-h-0 border border-white/[0.05] rounded-[32px] p-6 bg-gradient-to-br from-white/[0.03] to-transparent backdrop-blur-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)]">
+            <div className="lg:col-span-2 flex w-full flex-col gap-6 min-h-0 border border-white/[0.05] rounded-[32px] p-6 bg-linear-to-br from-white/[0.03] to-transparent backdrop-blur-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)]">
                 <div className="flex flex-row gap-4 justify-between items-center px-2">
                     <div className="flex flex-row items-center gap-3 card-font">
                         <h2 className="text-white text-2xl font-bold tracking-tight">SnapCut</h2>
