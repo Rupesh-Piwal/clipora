@@ -61,7 +61,7 @@ export function SiteHeader() {
                       });
                     }
                   }}
-                  className="hover:text-[#8B5CF6] transition-colors cursor-pointer"
+                  className="hover:text-[#824ffa] transition-colors cursor-pointer font-thin"
                 >
                   {link.name}
                 </button>

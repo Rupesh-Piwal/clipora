@@ -2,13 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useMicLevel } from "@/lib/hooks/useMicLevel";
-import {
-  X,
-  Check,
-  Circle,
-  Square,
-  MonitorOff,
-} from "lucide-react";
+import { X, Check, Circle, Square, MonitorOff } from "lucide-react";
 
 import {
   Tooltip,
@@ -16,7 +10,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { WebcamIcon, WebcamSlashIcon, MonitorArrowUpIcon, MicrophoneIcon, MicrophoneSlashIcon, RecordIcon, SelectionBackgroundIcon } from "@phosphor-icons/react";
+import {
+  WebcamIcon,
+  WebcamSlashIcon,
+  MonitorArrowUpIcon,
+  MicrophoneIcon,
+  MicrophoneSlashIcon,
+  RecordIcon,
+  SelectionBackgroundIcon,
+} from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import {
   BackgroundOption,
@@ -27,13 +29,13 @@ import { WebcamShape, WebcamSize } from "@/lib/types";
 
 export interface ControlBarProps {
   status:
-  | "idle"
-  | "dest"
-  | "initializing"
-  | "recording"
-  | "stopping"
-  | "completed"
-  | "error";
+    | "idle"
+    | "dest"
+    | "initializing"
+    | "recording"
+    | "stopping"
+    | "completed"
+    | "error";
   onStartRecording: () => void;
   onStopRecording: () => void;
   webcamEnabled: boolean;
@@ -145,7 +147,7 @@ export function ControlBar({
         </button>
       </TooltipTrigger>
       <TooltipContent>
-        <p className="text-white">{label}</p>
+        <p className="text-black">{label}</p>
       </TooltipContent>
     </Tooltip>
   );
@@ -259,7 +261,7 @@ export function ControlBar({
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p className="text-white">Circle</p>
+                    <p className="text-black">Circle</p>
                   </TooltipContent>
                 </Tooltip>
                 <Tooltip>
@@ -280,7 +282,7 @@ export function ControlBar({
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p className="text-white">Square</p>
+                    <p className="text-black">Square</p>
                   </TooltipContent>
                 </Tooltip>
                 <Tooltip>
@@ -301,7 +303,7 @@ export function ControlBar({
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p className="text-white">Rounded</p>
+                    <p className="text-black">Rounded</p>
                   </TooltipContent>
                 </Tooltip>
                 <button
@@ -343,8 +345,6 @@ export function ControlBar({
             </div>
           </div>
         )}
-
-
 
         <div className="bg-[#0E0E10]/90 backdrop-blur-xl border border-white/10 rounded-[20px] p-1.5 flex items-center gap-1.5 shadow-2xl ring-1 ring-black/50">
           <ControlButton
@@ -415,7 +415,7 @@ export function ControlBar({
                 </button>
               </TooltipTrigger>
               <TooltipContent>
-                <p className="text-white">Stop Recording</p>
+                <p className="text-black">Stop Recording</p>
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -432,11 +432,10 @@ export function ControlBar({
                   )}
                 >
                   <RecordIcon size={48} weight="duotone" />
-
                 </button>
               </TooltipTrigger>
               <TooltipContent>
-                <p className="text-white">Start Recording</p>
+                <p className="text-black">Start Recording</p>
               </TooltipContent>
             </Tooltip>
           )}
@@ -459,10 +458,9 @@ export function ControlBar({
             </button>
           </TooltipTrigger>
           <TooltipContent>
-            <p className="text-white">Close / Reset</p>
+            <p className="text-black">Close / Reset</p>
           </TooltipContent>
         </Tooltip>
-
       </div>
     </TooltipProvider>
   );
