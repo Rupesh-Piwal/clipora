@@ -1,20 +1,14 @@
-<p align="center">
-  <h1 align="center">🎥 Snap-Cut</h1>
-  <p align="center">
+# 🎥 SnapCut – Record & Share Instantly.
+
+[![GitHub repo size](https://img.shields.io/github/repo-size/Rupesh-Piwal/snapcut)](https://github.com/Rupesh-Piwal/snapcut) ![GitHub stars](https://img.shields.io/github/stars/Rupesh-Piwal/snapcut?style=social) ![GitHub forks](https://img.shields.io/github/forks/Rupesh-Piwal/snapcut?style=social) [![Twitter Follow](https://img.shields.io/twitter/follow/rpmarch21?style=social)](https://x.com/intent/follow?screen_name=rpmarch21)
+
+<p align="start">
     Browser-based screen recorder with instant shareable links.
     <br />
     Record → Review → Share — no downloads, no accounts, no friction.
   </p>
-</p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Next.js-16-black?logo=next.js" />
-  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react" />
-  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript" />
-  <img src="https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss" />
-  <img src="https://img.shields.io/badge/Postgres-Neon-4169E1?logo=postgresql" />
-  <img src="https://img.shields.io/badge/Storage-AWS_S3-FF9900?logo=amazons3" />
-</p>
+[![Tech](https://skillicons.dev/icons?i=nextjs,react,typescript,supabase,aws,tailwindcss,postgresql)]()
 
 ---
 
@@ -24,39 +18,31 @@ Snap-Cut is a lightweight **Loom alternative** that runs entirely in the browser
 
 **Built for**: async standups, bug reports, design reviews, product walkthroughs.
 
-## Screenshots
+## 🚀 Live Demo
 
-<p align="center">
-  <img src="" alt="Recording Interface" width="100%" />
-  <br />
-  <em>Recording interface with webcam overlay, custom backgrounds, and control bar</em>
-</p>
+#### LIVE DEMO 👉🏻 [Click to visit Snapcut](snapcutt.vercel.app)
 
-<p align="center">
-  <img src="" alt="Review & Upload" width="100%" />
-  <br />
-  <em>Review screen with upload progress and share link generation</em>
-</p>
+#### GITHUB REPO 👉🏻 [Click to visit Codebase](https://github.com/Rupesh-Piwal/snapcut)
 
-<p align="center">
-  <img src="" alt="Shareable Video Page" width="100%" />
-  <br />
-  <em>Public video page with custom player, description, and link previews</em>
-</p>
+#### PORTFOLIO 👉🏻 [View My Portfolio](https://rpiwal.vercel.app)
+
+## 📸 ScreenShots
+
+![Demo](./public/ScreenShots.png)
 
 ## Key Features
 
-| Feature | Details |
-|---|---|
-| 🎥 **Screen + Webcam Recording** | Real-time Canvas compositing at 30fps with draggable PiP webcam overlay |
-| 🎨 **Custom Backgrounds** | 9 image backgrounds + 10 gradients, rendered on-canvas behind screen capture |
-| 🔄 **Webcam Customization** | Circle / Square / Rounded shapes, 3 sizes (S/M/L), drag to reposition |
-| 🎙️ **Audio Mixing** | Mic + system audio mixed via Web Audio API with adjustable gain |
-| 📊 **Live Mic Level** | Zero-rerender audio visualization using refs + direct DOM updates |
-| ⏱️ **Recording Controls** | Countdown timer, recording duration, auto-stop at 120s |
-| ☁️ **Direct S3 Upload** | Client-side upload via presigned URLs with real-time progress |
-| 🔗 **Instant Share Links** | `/v/{id}` pages with video player, description, and link previews |
-| 🖥️ **Video Player** | Custom player with play/pause, seek, mute toggle, and progress bar |
+| Feature                          | Details                                                                      |
+| -------------------------------- | ---------------------------------------------------------------------------- |
+| 🎥 **Screen + Webcam Recording** | Real-time Canvas compositing at 30fps with draggable PiP webcam overlay      |
+| 🎨 **Custom Backgrounds**        | 9 image backgrounds + 10 gradients, rendered on-canvas behind screen capture |
+| 🔄 **Webcam Customization**      | Circle / Square / Rounded shapes, 3 sizes (S/M/L), drag to reposition        |
+| 🎙️ **Audio Mixing**              | Mic + system audio mixed via Web Audio API with adjustable gain              |
+| 📊 **Live Mic Level**            | Zero-rerender audio visualization using refs + direct DOM updates            |
+| ⏱️ **Recording Controls**        | Countdown timer, recording duration, auto-stop at 120s                       |
+| ☁️ **Direct S3 Upload**          | Client-side upload via presigned URLs with real-time progress                |
+| 🔗 **Instant Share Links**       | `/v/{id}` pages with video player, description, and link previews            |
+| 🖥️ **Video Player**              | Custom player with play/pause, seek, mute toggle, and progress bar           |
 
 ## Architecture
 
@@ -96,16 +82,21 @@ Snap-Cut is a lightweight **Loom alternative** that runs entirely in the browser
 ## Technical Highlights
 
 ### Web Worker Heartbeat
+
 Browser `setInterval` is throttled to 1fps in background tabs. During recording, if the user switches tabs, this would produce frozen frames. A **Web Worker timer** maintains a steady 30fps tick regardless of tab visibility — ensuring consistent recording quality.
 
 ### Finite State Machine
+
 Recording lifecycle is governed by a strict FSM: `idle → initializing → recording → stopping → completed`. Any state can transition to `error`. This prevents impossible states like double-starting or stopping an already-stopped recording.
 
 ### Zero-Rerender Audio Visualization
+
 The mic level indicator bypasses React's render cycle entirely. Audio analysis (RMS calculation + exponential smoothing) feeds directly into DOM transforms via refs — achieving smooth 60fps animation with zero component re-renders.
 
-### Canvas Composition Engine  
+### Canvas Composition Engine
+
 Screen capture and webcam are composited on a 1920×1080 Canvas with:
+
 - Aspect-ratio-aware contain/cover rendering
 - Clipped shapes (circle, square, rounded rect) for webcam
 - Shadow effects for depth
@@ -113,6 +104,7 @@ Screen capture and webcam are composited on a 1920×1080 Canvas with:
 - Pointer event → canvas coordinate mapping for drag-to-reposition
 
 ### Security
+
 - SSRF protection on link preview fetching (blocks localhost, private IPs)
 - Content-type whitelist (`video/webm` only) with 500MB size cap
 - S3 presigned URLs with 10-minute expiry
@@ -120,20 +112,21 @@ Screen capture and webcam are composited on a 1920×1080 Canvas with:
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| **Framework** | Next.js 16 (App Router) |
-| **UI** | React 19, Tailwind CSS 4, Radix UI, Framer Motion |
-| **Language** | TypeScript 5 |
-| **Database** | Neon Postgres (serverless) via Drizzle ORM |
-| **Storage** | AWS S3 (presigned URLs) |
-| **Auth** | better-auth (Google OAuth) |
-| **Icons** | Phosphor Icons, Lucide React |
+| Layer            | Technology                                                     |
+| ---------------- | -------------------------------------------------------------- |
+| **Framework**    | Next.js 16 (App Router)                                        |
+| **UI**           | React 19, Tailwind CSS 4, Radix UI, Framer Motion              |
+| **Language**     | TypeScript 5                                                   |
+| **Database**     | Neon Postgres (serverless) via Drizzle ORM                     |
+| **Storage**      | AWS S3 (presigned URLs)                                        |
+| **Auth**         | better-auth (Google OAuth)                                     |
+| **Icons**        | Phosphor Icons, Lucide React                                   |
 | **Browser APIs** | Canvas, MediaRecorder, Web Workers, Web Audio, getDisplayMedia |
 
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js 18+
 - AWS S3 bucket
 - Neon Postgres database
@@ -217,10 +210,6 @@ snap-cut/
 8. Upload: presigned S3 URL → XHR PUT with progress → metadata saved to Postgres
 9. Share link generated: /v/{uuid}
 ```
-
-## License
-
-MIT
 
 ---
 
