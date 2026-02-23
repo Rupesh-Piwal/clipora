@@ -45,39 +45,7 @@ Snap-Cut is a lightweight **Loom alternative** that runs entirely in the browser
 | 🖥️ **Video Player**              | Custom player with play/pause, seek, mute toggle, and progress bar           |
 
 ## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         CLIENT                              │
-│                                                             │
-│  useStreams ──► usePreviewRenderer ──► useRecording          │
-│      │              │                      │                │
-│  getUserMedia   Canvas 30fps          MediaRecorder         │
-│  getDisplayMedia  (heartbeat worker)   (1s chunks)          │
-│      │              │                      │                │
-│      └──── usePiPRecording (orchestrator) ──┘               │
-│                     │                                       │
-│              ScreenRecorder (UI)                            │
-│         ┌────────┴────────┐                                 │
-│    RecorderView      ReviewView                             │
-│    ├── PreviewStage  ├── Video playback                     │
-│    └── ControlBar    └── Upload + Share                     │
-│                                                             │
-├─────────────────────────────────────────────────────────────┤
-│                         SERVER                              │
-│                                                             │
-│  POST /api/uploads/presign ──► S3 presigned PUT URL         │
-│  POST /api/videos ──► Save metadata + fetch link previews   │
-│  GET  /v/[videoId] ──► SSR video share page                 │
-│                                                             │
-├─────────────────────────────────────────────────────────────┤
-│                      INFRASTRUCTURE                         │
-│                                                             │
-│  AWS S3 ──── Video storage (presigned upload/download)      │
-│  Neon Postgres ── Video metadata + link previews (Drizzle)  │
-│  Vercel ──── Hosting + serverless API routes                │
-└─────────────────────────────────────────────────────────────┘
-```
+![Demo](./public/hero/Hero-Image.png)
 
 ## Technical Highlights
 
