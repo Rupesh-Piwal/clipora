@@ -20,7 +20,7 @@ Snap-Cut is a lightweight **Loom alternative** that runs entirely in the browser
 
 ## 🚀 Live Demo
 
-#### LIVE DEMO 👉🏻 [Click to visit Snapcut](snapcutt.vercel.app)
+#### LIVE DEMO 👉🏻 [Click to visit Snapcut](https://snapcutt.vercel.app/)
 
 #### GITHUB REPO 👉🏻 [Click to visit Codebase](https://github.com/Rupesh-Piwal/snapcut)
 
