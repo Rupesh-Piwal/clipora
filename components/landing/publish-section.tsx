@@ -124,7 +124,7 @@ const progressKeyframes = `
 
 /* ─── Slideshow images ──────────────────────────────────────── */
 const SLIDE_IMAGES = [
-  "/how-it-works/Instant_Record.png",
+  "/how-it-works/Instant Record.png",
   "/how-it-works/Add Context.png",
   "/how-it-works/Share Links.png",
 ];

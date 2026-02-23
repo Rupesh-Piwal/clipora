@@ -10,7 +10,7 @@ export function Hero() {
     <section className="bg-[#0A0A0A] border-b border-white/10">
       <div className="container mx-auto max-w-5xl px-0 border-x border-white/10 h-full relative">
         {/* Ambient Background Glow */}{" "}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.10),transparent_40%)] pointer-events-none" />
+        {/* <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.10),transparent_40%)] pointer-events-none" /> */}
         {/* Main Content Area */}
         <AnimatedSection className="py-8 flex flex-col items-center text-center px-6 relative z-10">
           {/* Top Left */}
