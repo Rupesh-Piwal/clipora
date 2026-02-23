@@ -43,12 +43,20 @@ export function Faq() {
 
       <div className="container mx-auto max-w-3xl px-6 relative z-10">
         <AnimatedSection className="mb-16 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono font-thin text-white/70 mb-6 uppercase tracking-wider">
+          <div className="relative inline-flex items-center gap-2 px-3 py-1  bg-white/5 border border-white/10 text-xs font-mono font-thin text-white/70 mb-6 uppercase tracking-wider">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8B5CF6] opacity-60"></span>
               <span className="relative inline-flex h-2 w-2 rounded-full bg-[#8B5CF6]"></span>
             </span>
             FAQ
+            {/* Top Left */}
+            <span className="absolute top-[-1px] left-[-1px] w-2 h-2 border-t border-l border-white/15" />
+            {/* Top Right */}
+            <span className="absolute top-[-1px] right-[-1px] w-2 h-2 border-t border-r border-white/15" />
+            {/* Bottom Left */}
+            <span className="absolute bottom-[-1px] left-[-1px] w-2 h-2 border-b border-l border-white/15" />
+            {/* Bottom Right */}
+            <span className="absolute bottom-[-1px] right-[-1px] w-2 h-2 border-b border-r border-white/15" />
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-normal tracking-tight text-white mb-5 font-[family-name:var(--font-serif)] italic">
             Frequently Asked Questions

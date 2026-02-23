@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { HeroVideoDialog } from "../ui/hero-video-dialog";
 import { TextAnimate } from "../ui/text-animate";
 import { AnimatedSection } from "../animated-section";
+import Image from "next/image";
 
 export function Hero() {
   return (
     <section className="bg-[#0A0A0A] border-b border-white/10">
       <div className="container mx-auto max-w-5xl px-0 border-x border-white/10 h-full relative">
+        {/* Ambient Background Glow */}{" "}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.10),transparent_40%)] pointer-events-none" />
         {/* Main Content Area */}
         <AnimatedSection className="py-8 flex flex-col items-center text-center px-6 relative z-10">
           {/* Top Left */}
@@ -24,12 +26,20 @@ export function Hero() {
           <span className="absolute bottom-[-1px] right-[-1px] w-2 h-2 border-b border-r border-white/15" />
 
           {/* Tag */}
-          <div className="mb-8 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 bg-white/5 font-mono font-thin text-xs text-white">
+          <div className="relative mb-8 inline-flex items-center gap-2 px-3 py-1.5 border border-white/5 bg-white/5 font-mono font-thin text-xs text-white">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8B5CF6] opacity-60"></span>
               <span className="relative inline-flex h-2 w-2 rounded-full bg-[#8B5CF6]"></span>
             </span>
             Browser Screen Recorder
+            {/* Top Left */}
+            <span className="absolute top-[-1px] left-[-1px] w-2 h-2 border-t border-l border-white/15" />
+            {/* Top Right */}
+            <span className="absolute top-[-1px] right-[-1px] w-2 h-2 border-t border-r border-white/15" />
+            {/* Bottom Left */}
+            <span className="absolute bottom-[-1px] left-[-1px] w-2 h-2 border-b border-l border-white/15" />
+            {/* Bottom Right */}
+            <span className="absolute bottom-[-1px] right-[-1px] w-2 h-2 border-b border-r border-white/15" />
           </div>
 
           {/* Heading */}
@@ -100,46 +110,52 @@ export function Hero() {
             </Link>
           </div>
         </AnimatedSection>
-
         {/* Video/Visual Area with "Purple Strips" Image */}
+        {/* Visual Section */}
         <AnimatedSection
           delay={0.2}
-          className="mx-5 md:mx-0 rounded-2xl md:rounded-none relative border-t border-white/10"
+          className="relative border-t border-white/10 overflow-hidden"
         >
-          {/* The Purple Strips Image Background */}
+          {/* Background Layer 1 — Gradient */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0A] via-[#0f0f14] to-[#0A0A0A]" />
+
+          {/* Background Layer 2 — Banner Image */}
           <div
-            className="absolute inset-x-0 top-0 h-full bg-cover bg-center bg-no-repeat opacity-90"
+            className="absolute inset-0 opacity-40 bg-cover bg-center"
             style={{
               backgroundImage: "url('/hero-banner.jpg')",
-              // Fallback gradient if image missing
-              backgroundColor: "#0A0A0A",
             }}
           />
-          {/* Fallback pattern overlaid if image keeps failing, ensuring vibe */}
-          <div className="absolute inset-x-0 top-0 h-[500px] bg-[repeating-linear-gradient(0deg,rgba(139,92,246,0.1)_0px,rgba(139,92,246,0.1)_1px,transparent_1px,transparent_4px)] mix-blend-overlay pointer-events-none" />
 
-          <div className="relative z-10 px-6 pb-20 pt-12 flex justify-baseline">
-            <HeroVideoDialog
-              className="block dark:hidden border-transparent rounded-4xl overflow-hidden shadow-lg cursor-pointer opacity-95"
-              animationStyle="from-center"
-              videoSrc="/videos/dummy-video.mp4"
-              thumbnailSrc="/dummy-image.png"
-              thumbnailAlt="Dummy Video Thumbnail"
-            />
+          {/* Background Glow Effect */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.25),transparent_60%)]" />
+
+          {/* Content Wrapper */}
+          <div className="relative z-10 px-6 md:px-10 py-16 flex justify-center">
+            <div className="relative w-full max-w-5xl">
+              {/* Soft Purple Glow Behind Image */}
+              <div className="absolute -inset-6 bg-[#8B5CF6] opacity-20 blur-3xl rounded-3xl" />
+
+              {/* Glass Card Container */}
+              <div className="relative rounded border border-white/10 bg-black backdrop-blur-xl shadow-[0_20px_80px_rgba(139,92,246,0.25)] overflow-hidden">
+                <Image
+                  src="/hero/Hero-Image.png"
+                  alt="App Screenshot"
+                  width={1200}
+                  height={900}
+                  priority
+                  className="
+            w-full
+            h-auto
+            object-cover
+            transition-transform duration-700
+            hover:scale-[1.02]
+          "
+                />
+              </div>
+            </div>
           </div>
         </AnimatedSection>
-      </div>
-      {/* STRIPE + DIAGONAL SECTION */}
-      <div className="relative w-full bg-[#0A0A0A] border-b border-white/10">
-        <div className="container relative mx-auto max-w-5xl px-0 border-x border-white/10  overflow-hidden">
-          <div
-            className="h-12 w-full opacity-80"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(45deg, #1a1a1a 0px, #1a1a1a 1px, transparent 1px, transparent 6px)",
-            }}
-          />
-        </div>
       </div>
     </section>
   );

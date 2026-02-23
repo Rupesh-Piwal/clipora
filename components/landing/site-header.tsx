@@ -61,9 +61,20 @@ export function SiteHeader() {
                       });
                     }
                   }}
-                  className="hover:text-[#824ffa] transition-colors cursor-pointer font-thin"
+                  className="relative group font-thin text-white/80 hover:text-white transition-colors duration-300"
                 >
                   {link.name}
+
+                  {/* Premium animated underline */}
+                  <span
+                    className="
+    absolute left-1/2 -bottom-1 h-[1px] w-0
+    -translate-x-1/2
+    bg-[#8B5CF6]
+    transition-all duration-500 ease-out
+    group-hover:w-full
+  "
+                  />
                 </button>
               ))}
             </nav>

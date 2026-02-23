@@ -124,9 +124,9 @@ const progressKeyframes = `
 
 /* ─── Slideshow images ──────────────────────────────────────── */
 const SLIDE_IMAGES = [
-  "/assets/samples/thumbnail (1).png",
-  "/assets/samples/thumbnail (2).png",
-  "/assets/samples/thumbnail (3).png",
+  "/how-it-works/Instant_Record.png",
+  "/how-it-works/Add Context.png",
+  "/how-it-works/Share Links.png",
 ];
 const SLIDE_INTERVAL = 3000; // 3 seconds per image
 
@@ -168,7 +168,7 @@ function ExportPreviewCard() {
               key={src}
               src={src}
               alt={`SnapCut demo ${index + 1}`}
-              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-in-out"
+              className="absolute inset-0 w-full h-full aspect-video transition-opacity duration-700 ease-in-out"
               style={{ opacity: index === currentSlide ? 1 : 0 }}
             />
           ))}
@@ -238,12 +238,20 @@ export function PublishSection() {
         {/* ── Header ─────────────────────── */}
         <div className="text-center mb-14 md:mb-20">
           {/* Tag pill */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono font-thin text-white/70 mb-10 uppercase tracking-wider">
+          <div className="relative inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 text-xs font-mono font-thin text-white/70 mb-10 uppercase tracking-wider">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8B5CF6] opacity-60"></span>
               <span className="relative inline-flex h-2 w-2 rounded-full bg-[#8B5CF6]"></span>
             </span>
             How it Works?
+            {/* Top Left */}
+            <span className="absolute top-[-1px] left-[-1px] w-2 h-2 border-t border-l border-white/15" />
+            {/* Top Right */}
+            <span className="absolute top-[-1px] right-[-1px] w-2 h-2 border-t border-r border-white/15" />
+            {/* Bottom Left */}
+            <span className="absolute bottom-[-1px] left-[-1px] w-2 h-2 border-b border-l border-white/15" />
+            {/* Bottom Right */}
+            <span className="absolute bottom-[-1px] right-[-1px] w-2 h-2 border-b border-r border-white/15" />
           </div>
 
           {/* Headline — Instrument Serif Italic */}

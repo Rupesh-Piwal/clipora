@@ -241,7 +241,7 @@ export function ReviewView({
                                             style={{ width: `${uploadProgress}%` }}
                                         />
                                     </div>
-                                    <p className="text-sm font-medium text-white/40 tracking-wide uppercase">Uploading to Cloud</p>
+                                    <p className="text-sm font-medium text-white/40 tracking-wide uppercase">Generating Link...</p>
                                 </div>
                             </div>
                         </div>
