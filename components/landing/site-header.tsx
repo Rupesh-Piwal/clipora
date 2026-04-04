@@ -1,8 +1,10 @@
 "use client";
-import { RecordIcon } from "@phosphor-icons/react";
+import { RecordIcon, VideoCamera } from "@phosphor-icons/react";
 import Link from "next/link";
+import { useHistory } from "@/lib/hooks/useHistory";
 
 export function SiteHeader() {
+  const { history, isLoaded } = useHistory();
   return (
     <>
       {/* HEADER */}
@@ -77,6 +79,17 @@ export function SiteHeader() {
                   />
                 </button>
               ))}
+
+              {/* Conditional Dashboard Link */}
+              {isLoaded && history.length > 0 && (
+                <Link
+                  href="/dashboard"
+                  className="relative group font-thin text-white/80 hover:text-white transition-colors duration-300"
+                >
+
+                  <span>Dashboard</span>
+                </Link>
+              )}
             </nav>
           </div>
         </div>

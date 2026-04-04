@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { usePiPRecording } from "@/lib/hooks/usePiPRecording";
+import { useHistory } from "@/lib/hooks/useHistory";
 import {
     requestPresignedUrl,
     uploadToS3,
@@ -52,6 +53,8 @@ export default function ScreenRecorder() {
         cameraSourceRef,
         microphoneStream,
     } = usePiPRecording();
+
+    const { addVideoToHistory } = useHistory();
 
     const [reviewState, setReviewState] = useState<ReviewState>("review");
     const [uploadProgress, setUploadProgress] = useState(0);
@@ -109,6 +112,7 @@ export default function ScreenRecorder() {
             const shareUrl = `${window.location.origin}/v/${videoId}`;
             setShareData({ videoId, url: shareUrl });
             setReviewState("success");
+            addVideoToHistory(videoId);
         } catch (err) {
             console.error("Upload failed:", err);
             setUploadError(err instanceof Error ? err.message : "Upload failed");

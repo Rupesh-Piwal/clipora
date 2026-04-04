@@ -1,11 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
 
-/**
- * High-performance mic level hook.
- * Returns a ref to the current smoothed level (0–1) and accepts
- * a callback that receives the raw bar element ref for direct DOM updates.
- * Zero React re-renders during animation — all updates go through refs.
- */
 export function useMicLevel(stream: MediaStream | null) {
     const levelRef = useRef(0);
     const smoothedRef = useRef(0);
@@ -16,19 +10,18 @@ export function useMicLevel(stream: MediaStream | null) {
     const barRef = useRef<HTMLDivElement | null>(null);
     const glowRef = useRef<HTMLDivElement | null>(null);
 
-    // Stable ref-setter for the inner bar element
     const setBarRef = useCallback((el: HTMLDivElement | null) => {
         barRef.current = el;
     }, []);
 
-    // Stable ref-setter for the glow/track element
+
     const setGlowRef = useCallback((el: HTMLDivElement | null) => {
         glowRef.current = el;
     }, []);
 
+
     useEffect(() => {
         if (!stream) {
-            // Reset everything visually
             smoothedRef.current = 0;
             levelRef.current = 0;
             if (barRef.current) {
@@ -64,7 +57,7 @@ export function useMicLevel(stream: MediaStream | null) {
 
                     analyserRef.current.getByteTimeDomainData(dataArray);
 
-                    // RMS calculation
+
                     let sum = 0;
                     for (let i = 0; i < dataArray.length; i++) {
                         const sample = (dataArray[i] - 128) / 128;
@@ -72,19 +65,19 @@ export function useMicLevel(stream: MediaStream | null) {
                     }
                     const rms = Math.sqrt(sum / dataArray.length);
 
-                    // Amplify and clamp to 0–1
+
                     const raw = Math.min(1, rms * 5);
 
-                    // Exponential smoothing (lerp): smoothed = smoothed * 0.8 + raw * 0.2
+
                     smoothedRef.current = smoothedRef.current * 0.8 + raw * 0.2;
                     levelRef.current = smoothedRef.current;
 
-                    // Direct DOM update — zero React re-renders
+
                     if (barRef.current) {
                         barRef.current.style.transform = `scaleX(${smoothedRef.current})`;
                     }
 
-                    // Glow effect when speaking
+
                     if (glowRef.current) {
                         if (smoothedRef.current > 0.35) {
                             glowRef.current.style.boxShadow = `0 0 8px rgba(16,185,129,${0.4 + smoothedRef.current * 0.4})`;

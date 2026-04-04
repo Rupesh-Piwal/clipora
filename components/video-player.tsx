@@ -67,14 +67,14 @@ export function VideoPlayer({ src, autoPlay = true }: VideoPlayerProps) {
     };
 
     const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!videoRef.current) return;
+        if (!videoRef.current || !Number.isFinite(duration) || duration <= 0) return;
         const rect = e.currentTarget.getBoundingClientRect();
         const percent = (e.clientX - rect.left) / rect.width;
         videoRef.current.currentTime = percent * duration;
     };
 
     const formatTime = (time: number) => {
-        if (!time || isNaN(time)) return '0:00';
+        if (!time || !Number.isFinite(time)) return '0:00';
         const minutes = Math.floor(time / 60);
         const seconds = Math.floor(time % 60);
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
@@ -82,7 +82,7 @@ export function VideoPlayer({ src, autoPlay = true }: VideoPlayerProps) {
 
     return (
         <div
-            className="relative w-full aspect-video bg-gradient-to-br from-neutral-100 to-neutral-200 rounded-2xl overflow-hidden shadow-lg group"
+            className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 group cursor-pointer"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             onClick={handlePlayPauseClick}
@@ -99,16 +99,16 @@ export function VideoPlayer({ src, autoPlay = true }: VideoPlayerProps) {
             {/* Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-            {/* Center Play Button */}
+            {/* Glassmorphic Play/Pause Center Button */}
             <div
-                className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 pointer-events-none ${isHovered || !isPlaying ? 'opacity-100' : 'opacity-0'
+                className={`absolute inset-0 flex items-center justify-center transition-opacity duration-500 pointer-events-none ${isHovered || !isPlaying ? 'opacity-100' : 'opacity-0'
                     }`}
             >
-                <div className="relative w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center shadow-lg pointer-events-auto transition-transform transform group-hover:scale-110">
+                <div className="relative w-16 h-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-2xl pointer-events-auto transition-transform transform hover:scale-105 active:scale-95">
                     {isPlaying ? (
-                        <Pause className="w-6 h-6 text-white fill-white" />
+                        <Pause className="w-7 h-7 text-white fill-white" />
                     ) : (
-                        <Play className="w-6 h-6 text-white fill-white ml-1" />
+                        <Play className="w-7 h-7 text-white fill-white ml-1" />
                     )}
                 </div>
             </div>
@@ -127,20 +127,22 @@ export function VideoPlayer({ src, autoPlay = true }: VideoPlayerProps) {
                 </button>
             </div>
 
-            {/* Bottom Controls */}
+            {/* Bottom Controls Bar (Glassmorphic) */}
             <div
-                className={`absolute bottom-0 left-0 right-0 p-4 transition-all duration-300 ${isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
+                className={`absolute bottom-4 left-4 right-4 px-4 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl transition-all duration-500 ${isHovered || !isPlaying ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8 pointer-events-none'}`}
                 onClick={e => e.stopPropagation()}
             >
-                <div className="flex items-center gap-3 text-white text-sm font-medium mb-2">
-                    <span>{formatTime(currentTime)}</span>
-                    <div className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden cursor-pointer" onClick={handleProgressClick}>
+                <div className="flex items-center gap-4 text-white/90 text-xs font-medium tracking-wide">
+                    <span className="w-8 text-center">{formatTime(currentTime)}</span>
+                    
+                    <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden cursor-pointer group/progress relative" onClick={handleProgressClick}>
                         <div
-                            className="h-full bg-green-500 rounded-full relative"
-                            style={{ width: duration ? `${(currentTime / duration) * 100}%` : '0%' }}
+                            className="absolute top-0 bottom-0 left-0 bg-white rounded-full transition-all duration-150 ease-out"
+                            style={{ width: Number.isFinite(duration) && duration > 0 ? `${(currentTime / duration) * 100}%` : '0%' }}
                         />
                     </div>
-                    <span>{formatTime(duration)}</span>
+                    
+                    <span className="w-8 text-center">{formatTime(duration)}</span>
                 </div>
             </div>
         </div>

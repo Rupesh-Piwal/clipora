@@ -22,6 +22,12 @@ export function useRecording({ onComplete, onError }: UseRecordingProps) {
     const startTimeRef = useRef<number | null>(null);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+    console.log("chunksRef: ", chunksRef.current)
+    console.log("startTimeRef: ", startTimeRef.current)
+    console.log("timerIntervalRef: ", timerIntervalRef.current)
+    console.log("isRecording: ", isRecording)
+    console.log("recordingDuration: ", recordingDuration)
+
     // --- Helpers ---
     const getSupportedMimeType = () => {
         const types = [
