@@ -9,9 +9,6 @@ export function Hero() {
   return (
     <section className="bg-[#0A0A0A] border-b border-white/10">
       <div className="container mx-auto max-w-5xl px-0 border-x border-white/10 h-full relative">
-        {/* Ambient Background Glow */}{" "}
-        {/* <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.10),transparent_40%)] pointer-events-none" /> */}
-        {/* Main Content Area */}
         <AnimatedSection className="py-8 flex flex-col items-center text-center px-6 relative z-10">
           {/* Top Left */}
           <span className="absolute top-[-1px] left-[-1px] w-2 h-2 border-t border-l border-white/15" />
@@ -139,7 +136,7 @@ export function Hero() {
               {/* Glass Card Container */}
               <div className="relative rounded border border-white/10 bg-black backdrop-blur-xl shadow-[0_20px_80px_rgba(139,92,246,0.25)] overflow-hidden">
                 <Image
-                  src="/hero/Hero-Image.png"
+                  src="/hero/dash-1.png"
                   alt="App Screenshot"
                   width={1200}
                   height={900}

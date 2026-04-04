@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatTime } from "./utils";
-import { LinkIcon } from "@phosphor-icons/react";
+import { LinkIcon, VideoCamera } from "@phosphor-icons/react";
+import Link from 'next/link';
 
 export type ReviewState = "review" | "uploading" | "success" | "error";
 
@@ -286,6 +287,15 @@ export function ReviewView({
                                     <a href={shareData.url} target="_blank" rel="noopener noreferrer">
                                         Open Player <ExternalLink className="w-5 h-5" />
                                     </a>
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="w-full h-12 bg-white/[0.02] border-white/5 hover:bg-white/[0.08] text-white/50 hover:text-white rounded-xl transition-all duration-300 gap-2"
+                                    asChild
+                                >
+                                    <Link href="/dashboard">
+                                        <VideoCamera className="w-4 h-4" weight="fill" /> Dashboard
+                                    </Link>
                                 </Button>
                                 <Button
                                     variant="outline"
